@@ -21,10 +21,10 @@ ew::CameraController cameraController;
 
 struct Material
 {
-	float Ka = 1.0f;
-	float Kd = 0.5f;
-	float Ks = 0.5f;
-	float Shininess = 128.0f;
+	glm::vec3 Ka = glm::vec3(0.02f, 0.17f,0.02f);
+	glm::vec3 Kd = glm::vec3(0.07f, 0.6f, 0.07f);
+	glm::vec3 Ks = glm::vec3(0.63f, 0.72f, 0.63f);
+	float Shininess = 0.6f;
 }material;
 
 void drawUI();
@@ -39,7 +39,7 @@ float deltaTime;
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
-	GLuint brickTexture = ew::loadTexture("assets/brick_color.jpg");
+	GLuint brickTexture = ew::loadTexture("assets/emerald.jpg");
 	ew::Model monkeyModel = ew::Model("assets/suzanne.fbx");
 	ew::Transform monkeyTransform;
 	glEnable(GL_CULL_FACE);
@@ -73,9 +73,9 @@ int main() {
 		shader.setVec3("_EyePos", camera.position);
 		shader.setMat4("_Model", monkeyTransform.modelMatrix());
 		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
-		shader.setFloat("_Material.Ka", material.Ka);
-		shader.setFloat("_Material.Kd", material.Kd);
-		shader.setFloat("_Material.Ks", material.Ks);
+		shader.setVec3("_Material.Ka", material.Ka);
+		shader.setVec3("_Material.Kd", material.Kd);
+		shader.setVec3("_Material.Ks", material.Ks);
 		shader.setFloat("_Material.Shininess", material.Shininess);
 		monkeyModel.draw();
 
@@ -104,10 +104,26 @@ void drawUI() {
 	}
 	if (ImGui::CollapsingHeader("Material"))
 	{
-		ImGui::SliderFloat("AmbientK", &material.Ka, 0.0f, 1.0f);
-		ImGui::SliderFloat("DiffuseK", &material.Kd, 0.0f, 1.0f);
-		ImGui::SliderFloat("SpecularK", &material.Ks, 0.0f, 1.0f);
-		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
+		if (ImGui::CollapsingHeader("AmbientK"))
+		{
+			ImGui::SliderFloat("AmbientR", &material.Ka.x, 0.0f, 1.0f);
+			ImGui::SliderFloat("AmbientG", &material.Ka.y, 0.0f, 1.0f);
+			ImGui::SliderFloat("AmbientB", &material.Ka.z, 0.0f, 1.0f);
+		}
+
+		if (ImGui::CollapsingHeader("DiffuseK"))
+		{
+			ImGui::SliderFloat("DiffuseR", &material.Kd.x, 0.0f, 1.0f);
+			ImGui::SliderFloat("DiffuseG", &material.Kd.y, 0.0f, 1.0f);
+			ImGui::SliderFloat("DiffuseB", &material.Kd.z, 0.0f, 1.0f);
+		}
+		if (ImGui::CollapsingHeader("SpecularK"))
+		{
+			ImGui::SliderFloat("SpecularR", &material.Ks.x, 0.0f, 1.0f);
+			ImGui::SliderFloat("SpecularG", &material.Ks.y, 0.0f, 1.0f);
+			ImGui::SliderFloat("SpecularB", &material.Ks.z, 0.0f, 1.0f);
+		}
+		ImGui::SliderFloat("Shininess", &material.Shininess, 0.0f, 1024.0f);
 	}
 	ImGui::End();
 

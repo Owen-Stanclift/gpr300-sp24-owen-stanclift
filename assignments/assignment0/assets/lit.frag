@@ -19,9 +19,9 @@ uniform vec3 _AmbientColor = vec3(0.3,0.4,0.46);
 
 struct Material
 {
-	float Ka; //Ambience (0-1)
-	float Kd; //Diffuse (0-1)
-	float Ks; //Specular (0-1)
+	vec3 Ka; //Ambience (0-1)
+	vec3 Kd; //Diffuse (0-1)
+	vec3 Ks; //Specular (0-1)
 	float Shininess; //Size of specular
 };
 uniform Material _Material;
