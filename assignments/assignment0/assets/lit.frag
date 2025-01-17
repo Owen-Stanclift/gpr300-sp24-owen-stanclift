@@ -22,6 +22,7 @@ struct Material
 	vec3 Ka; //Ambience (0-1)
 	vec3 Kd; //Diffuse (0-1)
 	vec3 Ks; //Specular (0-1)
+	float alpha;
 	float Shininess; //Size of specular
 };
 uniform Material _Material;
@@ -43,5 +44,5 @@ vec3 lightColor = (_Material.Kd * diffuseFactor + _Material.Ks * specularFactor)
 lightColor += _AmbientColor + _Material.Ka;
 vec3 objectColor = texture (_MainTex,fs_in.TexCoord).rgb;
 
-FragColor = vec4(objectColor * lightColor,1.0);
+FragColor = vec4(objectColor * lightColor,_Material.alpha);
 }
