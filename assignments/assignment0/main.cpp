@@ -50,6 +50,7 @@ int main() {
 	GLuint 	rubyTexture = ew::loadTexture("assets/ruby.jpg");
 	GLuint 	pearlTexture = ew::loadTexture("assets/pearl.jpg");
 	GLuint 	turquoiseTexture = ew::loadTexture("assets/turquoise.jpg");
+	GLuint 	brickTexture = ew::loadTexture("assets/brick_color.jpg");
 	ew::Model monkeyModel = ew::Model("assets/suzanne.fbx");
 	ew::Transform monkeyTransform;
 
@@ -85,6 +86,7 @@ int main() {
 		glBindTextureUnit(6, rubyTexture);
 		glBindTextureUnit(7, pearlTexture);
 		glBindTextureUnit(8, turquoiseTexture);
+		glBindTextureUnit(9, brickTexture);
 
 		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
 
@@ -210,6 +212,15 @@ void drawUI() {
 			material.Ks = glm::vec3(0.30, 0.31, 0.31);
 			material.alpha = 0.8f;
 			material.Shininess = 12.8f;
+		}
+		if (ImGui::Button("Brick"))
+		{
+			textureIndex = 9;
+			material.Ka = glm::vec3(1.0, 1.0, 1.0);
+			material.Kd = glm::vec3(0.5, 0.5, 0.5);
+			material.Ks = glm::vec3(0.5, 0.5, 0.5);
+			material.alpha = 1.0f;
+			material.Shininess = 128.0f;
 		}
 	}
 		if (ImGui::CollapsingHeader("Custom"))
