@@ -30,6 +30,8 @@ static std::vector<std::string> post_processing_effects = {
 	"Gamma",
 	"GammaDisplay",
 	"Fog",
+	"Film",
+	"Distortion",
 };
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -78,6 +80,8 @@ enum
 	EFFECT_GAMMA = 11,
 	EFFECT_GAMMADISPLAY = 12,
 	EFFECT_FOG = 13,
+	EFFECT_FILM = 14,
+	EFFECT_DISTORTION = 15,
 };
 GLuint 	brickTexture;
 void drawUI();
@@ -108,6 +112,8 @@ int main() {
 		ew::Shader("assets/fullscreen.vert", "assets/gamma.frag"),
 		ew::Shader("assets/fullscreen.vert", "assets/gammaDisplay.frag"),
 		ew::Shader("assets/fullscreen.vert", "assets/fog.frag"),
+		ew::Shader("assets/fullscreen.vert", "assets/film.frag"),
+		ew::Shader("assets/fullscreen.vert", "assets/distortion.frag"),
 		ew::Shader("assets/fullscreen.vert", "assets/bloom.frag"),
 		ew::Shader("assets/fullscreen.vert", "assets/blend.frag"),
 	};
@@ -266,11 +272,10 @@ void post_process(ew::Shader shader)
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
-
+	glDepthMask(GL_TRUE);
 	shader.use();
 	shader.setInt("_MainTex", 0);
 
-	//glDepthMask(GL_FALSE);
 //glDepthFunc(GL_LESS);
 	switch (effect_index)
 {
@@ -284,14 +289,30 @@ case EFFECT_INVERSE:
 case EFFECT_CHROMATIC:
     break;
 case EFFECT_VIGNETTE:
+{
 	shader.setVec2("resolution", glm::vec2(800, 600));
 	shader.setFloat("radius", 0.5f);
 	shader.setFloat("softness", 0.02f);
+}
     break;
 case EFFECT_HDR:
 	shader.setFloat("exposure", 1.0f);
 case EFFECT_FOG:
-
+{
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glDepthMask(GL_FALSE);
+	shader.setFloat("fog", 0.1f);
+}
+case EFFECT_FILM:
+{
+	shader.setFloat("iTime", glfwGetTime());
+}
+case EFFECT_DISTORTION:
+{
+	shader.setFloat("iTime", glfwGetTime());
+	shader.setVec2("aspect", glm::vec2(800,600));
+}
 default:
     break;
 }
