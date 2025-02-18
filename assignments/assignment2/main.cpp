@@ -13,6 +13,7 @@
 #include <ew/cameraController.h>
 #include <ew/transform.h>
 #include <ew/texture.h>
+#include <ew/procGen.h>
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 GLFWwindow* initWindow(const char* title, int width, int height);
@@ -71,6 +72,8 @@ int main() {
 	GLuint 	brickTexture = ew::loadTexture("assets/brick_color.jpg");
 	ew::Model monkeyModel = ew::Model("assets/suzanne.fbx");
 	ew::Transform monkeyTransform;
+	ew::Mesh plane;
+	plane.load(ew::createPlane(50.0f, 50.0f, 100));
 
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -96,7 +99,6 @@ int main() {
 		const auto light_proj = glm::ortho(-10.0f, -10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
 		const auto light_view = glm::lookAt(glm::vec3(0.0f,-1.0f,0.0f), glm::vec3(0.0f), glm::vec3(0.0f, -2.0f, 0.0f));
 		const auto light_view_proj = light_proj * light_view;
-
 		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer.fbo);
 		{
 			glEnable(GL_DEPTH_TEST);
@@ -116,22 +118,24 @@ int main() {
 			glEnable(GL_DEPTH_TEST);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, depthbuffer.depth);
+			shader.use();
+			shader.setInt("_MainTex", 0);
+			shader.setInt("shadow_map", depthbuffer.depth);
+			shader.setMat4("_CameraViewProjection", camera_view_proj);
+			shader.setMat4("_LightViewProjection", light_view_proj);
+			shader.setMat4("_Model", monkeyTransform.modelMatrix());
+			shader.setVec3("_Material.Ka", material.Ka);
+			shader.setVec3("_Material.Kd", material.Kd);
+			shader.setVec3("_Material.Ks", material.Ks);
+			shader.setFloat("_Material.alpha", material.alpha);
+			shader.setFloat("_Material.Shininess", material.Shininess);
 		}
 
-		shader.use();
-		shader.setInt("_MainTex", textureIndex);
-		shader.setMat4("_CameraViewProjection", camera_view_proj);
-		shader.setMat4("_LightViewProjection", light_view_proj);
-		shader.setMat4("_Model", monkeyTransform.modelMatrix());
-		shader.setVec3("_Material.Ka", material.Ka);
-		shader.setVec3("_Material.Kd", material.Kd);
-		shader.setVec3("_Material.Ks", material.Ks);
-		shader.setFloat("_Material.alpha", material.alpha);
-		shader.setFloat("_Material.Shininess", material.Shininess);
+
+
 
 		monkeyModel.draw();
-
-
+		plane.draw();
 		drawUI();
 
 		glfwSwapBuffers(window);

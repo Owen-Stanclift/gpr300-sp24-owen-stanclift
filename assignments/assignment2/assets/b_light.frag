@@ -36,6 +36,10 @@ float shadow_calc(vec4 frag_pos_lightspace)
 vec3 proj_cord = frag_pos_lightspace.xyz/ frag_pos_lightspace.w;
 proj_cord = (proj_cord * 0.5) + 0.5;
 
+if(proj_cord.z < 0.0 || proj_cord.z >= 1.0)
+{
+return 0.0;
+}
 float current_depth = texture(shadow_map, proj_cord.xy).r;
 float closest_depth = proj_cord.z;
 float shadow = (current_depth > closest_depth) ? 1.0 : 0.0;
