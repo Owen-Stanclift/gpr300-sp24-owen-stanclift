@@ -19,8 +19,12 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 GLFWwindow* initWindow(const char* title, int width, int height);
 ew::Camera camera;
 ew::CameraController cameraController;
+ew::Mesh plane;
+ew::Transform monkeyTransform;
+ew::Transform planeTransform;
 
 int textureIndex = 0;
+float bias = 0.005f;
 struct Material
 {
 	glm::vec3 Ka = glm::vec3{1.0f};
@@ -30,6 +34,12 @@ struct Material
 	float Shininess = 76.8f;
 }material;
 
+struct Light
+{
+	glm::vec3 position = glm::vec3(10.0f, 5.0f, 0.0f);
+	glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
+}light;
+
 struct DepthBuffer {
 
 	GLuint fbo;
@@ -37,19 +47,22 @@ struct DepthBuffer {
 
 	void Init()
 	{
-		glGenFramebuffers(1, &fbo);
+		glCreateFramebuffers(1, &fbo);
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 		glGenTextures(1, &depth);
 		glBindTexture(GL_TEXTURE_2D, depth);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, 256, 256, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		//glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT16, 2048, 2048);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, 2048, 2048, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		float borderColor[4] = { 1.0f,1.0f,1.0f,1.0f };
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D,depth,0);
+		//glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
-		glDrawBuffers(0, nullptr);
+		glDrawBuffer(GL_NONE);
 		glReadBuffer(GL_NONE);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -57,7 +70,7 @@ struct DepthBuffer {
 	}
 } depthbuffer;
 void drawUI();
-
+void drawScene(ew::Model model, ew::Shader shader, glm::mat4 lightViewProjection);
 //Global state
 int screenWidth = 1080;
 int screenHeight = 720;
@@ -67,20 +80,22 @@ float deltaTime;
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
-	ew::Shader shader = ew::Shader("assets/b_light.vert", "assets/b_light.frag");
+	ew::Shader blinphong = ew::Shader("assets/b_light.vert", "assets/b_light.frag");
 	ew::Shader shadow = ew::Shader("assets/shadow.vert", "assets/shadow.frag");
-	GLuint 	brickTexture = ew::loadTexture("assets/brick_color.jpg");
-	ew::Model monkeyModel = ew::Model("assets/suzanne.fbx");
-	ew::Transform monkeyTransform;
-	ew::Mesh plane;
 	plane.load(ew::createPlane(50.0f, 50.0f, 100));
+	ew::Model monkeyModel = ew::Model("assets/suzanne.fbx");
 
+	monkeyTransform.position = glm::vec3(0.0f, 0.0f, 0.0f);
+	planeTransform.position = glm::vec3(0.0f, -2.5f, 0.0f);
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
 	camera.aspectRatio = (float)screenWidth / screenHeight;
 	camera.fov = 60.0f;
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
-	//depthbuffer.Init();
+
+	depthbuffer.Init();
+
+
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
@@ -90,52 +105,66 @@ int main() {
 
 		cameraController.move(window, &camera, deltaTime);
 
-		//RENDER
-
-		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
+		const auto light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+		const auto light_view = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		const auto light_view_proj = light_proj * light_view;
 
 		const auto camera_view_proj = camera.projectionMatrix() * camera.viewMatrix();
 
-		const auto light_proj = glm::ortho(-10.0f, -10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
-		const auto light_view = glm::lookAt(glm::vec3(0.0f,-1.0f,0.0f), glm::vec3(0.0f), glm::vec3(0.0f, -2.0f, 0.0f));
-		const auto light_view_proj = light_proj * light_view;
+		//RENDER
+		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
+
 		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer.fbo);
 		{
 			glEnable(GL_DEPTH_TEST);
-			glViewport(0, 0, 256, 256);
+			glViewport(0, 0, 2048, 2048);
 			glClear(GL_DEPTH_BUFFER_BIT);
+			glCullFace(GL_FRONT);
 
 			shadow.use();
-			shader.setMat4("_Model", glm::mat4{ 1.0f });
+			shadow.setMat4("_Model", monkeyTransform.modelMatrix());
 			shadow.setMat4("_LightViewProjection", light_view_proj);
+
+			monkeyModel.draw();
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
+		// draw scene
 		{
-			glViewport(0, 0, screenWidth, screenHeight);
-			glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glEnable(GL_CULL_FACE);
 			glCullFace(GL_BACK);
 			glEnable(GL_DEPTH_TEST);
+
+			glViewport(0, 0, screenWidth, screenHeight);
+
+			glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, depthbuffer.depth);
-			shader.use();
-			shader.setInt("_MainTex", 0);
-			shader.setInt("shadow_map", depthbuffer.depth);
-			shader.setMat4("_CameraViewProjection", camera_view_proj);
-			shader.setMat4("_LightViewProjection", light_view_proj);
-			shader.setMat4("_Model", monkeyTransform.modelMatrix());
-			shader.setVec3("_Material.Ka", material.Ka);
-			shader.setVec3("_Material.Kd", material.Kd);
-			shader.setVec3("_Material.Ks", material.Ks);
-			shader.setFloat("_Material.alpha", material.alpha);
-			shader.setFloat("_Material.Shininess", material.Shininess);
+
+			blinphong.use();
+			blinphong.setInt("shadow_map", 0);
+			blinphong.setMat4("_CameraViewProjection", camera_view_proj);
+			blinphong.setMat4("_LightViewProjection", light_view_proj);
+			blinphong.setMat4("_Model", monkeyTransform.modelMatrix());
+			blinphong.setVec3("_Material.Ka", material.Ka);
+			blinphong.setVec3("_Material.Kd", material.Kd);
+			blinphong.setVec3("_Material.Ks", material.Ks);
+			blinphong.setFloat("_Material.alpha", material.alpha);
+			blinphong.setFloat("_Material.Shininess", material.Shininess);
+			blinphong.setVec3("_LightColor", light.color);
+			blinphong.setVec3("light_pos", light.position);
+			blinphong.setVec3("camera_pos", camera.position);
+			blinphong.setFloat("bias", bias);
+
+
+			monkeyModel.draw();
+
+			blinphong.setMat4("_Model", planeTransform.modelMatrix());
+			plane.draw();
 		}
 
-
-
-
-		monkeyModel.draw();
-		plane.draw();
 		drawUI();
 
 		glfwSwapBuffers(window);
@@ -148,6 +177,10 @@ void resetCamera(ew::Camera* camera, ew::CameraController* controller)
 	camera->target = glm::vec3(0);
 	controller->yaw = controller->pitch = 0;
 }
+void drawScene(ew::Model model, ew::Shader shader, glm::mat4 lightViewProjection)
+{
+
+}
 void drawUI() {
 	ImGui_ImplGlfw_NewFrame();
 	ImGui_ImplOpenGL3_NewFrame();
@@ -158,8 +191,12 @@ void drawUI() {
 	{
 		resetCamera(&camera, &cameraController);
 	}
-	ImGui::Separator();
-	ImGui::Image((ImTextureID)(intptr_t)depthbuffer.depth, ImVec2(256, 256));
+	ImGui::BeginChild("Shadow Map");
+	ImVec2 size = ImGui::GetWindowSize();
+	ImGui::Image((ImTextureID)depthbuffer.depth, size, ImVec2(0,1),ImVec2(1,0));
+	ImGui::EndChild();
+	ImGui::SliderFloat("Bias", &bias, 0.000001f, 0.05f);
+	ImGui::SliderFloat3("LightPos", &light.position.x, -5.0f, 5.0f);
 	ImGui::End();
 
 	ImGui::Render();

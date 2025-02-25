@@ -8,5 +8,5 @@ uniform mat4 _LightViewProjection;
 void main()
 {
 vec4 world_pos = _Model * vec4(vPos,1.0);
-gl_Position = _LightViewProjection * _Model * world_pos;
+gl_Position = _LightViewProjection * world_pos;
 }
