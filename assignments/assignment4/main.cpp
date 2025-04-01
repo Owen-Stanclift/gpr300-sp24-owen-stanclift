@@ -271,12 +271,7 @@ int main() {
 
 				//Fragment
 			// FIXME:
-			lightShader.setInt("albedo", 0);
-			lightShader.setInt("position", 1);
-			lightShader.setInt("normal", 2);
-			lightShader.setFloat("radius", 1.0f);
-			lightShader.setVec3("mainLightPos", glm::vec3(0.0f, 10.0f, 0.0f));
-			lightShader.setVec3("cameraPos", camera.position);
+			lightShader.setVec3("viewDir", camera.position);
 
 			for (auto i = 0; i < 64; i++) {
 				lightShader.setVec3("lights[" + std::to_string(i) + "].position", storedLights[i]);

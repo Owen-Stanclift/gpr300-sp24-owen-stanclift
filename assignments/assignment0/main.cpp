@@ -29,6 +29,9 @@ struct Material
 	float Shininess = 76.8f;
 }material;
 
+float metal = 0.5f;
+float rough = 0.5f;
+
 void drawUI();
 
 //Global state
@@ -40,7 +43,7 @@ float deltaTime;
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
-	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
+	ew::Shader shader = ew::Shader("assets/pbr.vert", "assets/pbr.frag");
 	GLuint 	emeraldTexture = ew::loadTexture("assets/emerald.jpg");
 	GLuint 	brassTexture = ew::loadTexture("assets/brass.jpg");
 	GLuint 	bronzeTexture = ew::loadTexture("assets/bronze.jpg");
@@ -100,6 +103,8 @@ int main() {
 		shader.setVec3("_Material.Ks", material.Ks);
 		shader.setFloat("_Material.alpha", material.alpha);
 		shader.setFloat("_Material.Shininess", material.Shininess);
+		shader.setFloat("metallic", metal);
+		shader.setFloat("roughness", rough);
 		monkeyModel.draw();
 
 
@@ -243,6 +248,14 @@ void drawUI() {
 				ImGui::SliderFloat("SpecularR", &material.Ks.x, 0.0f, 1.0f);
 				ImGui::SliderFloat("SpecularG", &material.Ks.y, 0.0f, 1.0f);
 				ImGui::SliderFloat("SpecularB", &material.Ks.z, 0.0f, 1.0f);
+			}
+			if (ImGui::CollapsingHeader("Metallic"))
+			{
+				ImGui::SliderFloat("Metal", &metal, 0.0f, 1.0f);
+			}
+			if (ImGui::CollapsingHeader("Roughness"))
+			{
+				ImGui::SliderFloat("Rough", &rough, 0.0f, 1.0f);
 			}
 			ImGui::SliderFloat("Alpha", &material.alpha, 0.0f, 1.0f);
 			ImGui::SliderFloat("Shininess", &material.Shininess, 0.0f, 1024.0f);
