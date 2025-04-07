@@ -274,8 +274,8 @@ int main() {
 			lightShader.setInt("albedo", 0);
 			lightShader.setInt("position", 1);
 			lightShader.setInt("normal", 2);
-			lightShader.setFloat("radius", 1.0f);
-			lightShader.setVec3("mainLightPos", glm::vec3(0.0f, 10.0f, 0.0f));
+			lightShader.setFloat("radius", 2.0f);
+			lightShader.setVec3("mainLightPos", glm::vec3(0.0f, 20.0f, 0.0f));
 			lightShader.setVec3("cameraPos", camera.position);
 
 			for (auto i = 0; i < 64; i++) {
