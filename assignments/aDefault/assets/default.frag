@@ -13,6 +13,6 @@ uniform sampler2D screen;
 
 void main()
 {
-	vec3 obj_color = texture(screen,fs_in.TexCoord);
+	vec3 obj_color = texture(screen,fs_in.TexCoord).rgb;
 	FragColor = vec4(obj_color,1.0);
 }

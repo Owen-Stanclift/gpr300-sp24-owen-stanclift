@@ -18,7 +18,7 @@ void main()
 {
     vec4 world_position = _Model * vec4(vPos,1.0);
     vs_out.WorldPos = world_position.xyz;
-    vs_out.WorldNormal = vNormal; 
+    vs_out.WorldNormal = transpose(inverse(mat3(_Model))) * vNormal;
     vs_out.TexCoord = vTexCoord;
     gl_Position = _CameraViewProjection * world_position;
 }

@@ -37,11 +37,9 @@ struct Material
 	float Shininess = 76.8f;
 }material;
 
-struct Light
-{
-	glm::vec3 position = glm::vec3(10.0f, 5.0f, 0.0f);
-	glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
-}light;
+struct {
+	float radius = 1.0f;
+} debug;
 
 constexpr int FrameWidth = 800;
 constexpr int FrameHeight = 600;
@@ -166,8 +164,7 @@ struct FullscreenQuad
 
 void drawUI();
 void drawScene(ew::Model model, ew::Shader shader, glm::mat4 lightViewProjection);
-void postProcess(ew::Shader shader);
-void lightProcess(ew::Shader shader);
+
 //Global state
 int screenWidth = 1080;
 int screenHeight = 720;
@@ -178,7 +175,7 @@ float deltaTime;
 int main() {
 	srand(time(NULL));
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
-	ew::Shader blinphong = ew::Shader("assets/experiment.vert", "assets/experiment.frag");
+	ew::Shader geometry = ew::Shader("assets/experiment.vert", "assets/experiment.frag");
 	ew::Shader exLight = ew::Shader("assets/experiment_light.vert", "assets/experiment_light.frag");
 	ew::Shader lightShader = ew::Shader("assets/light.vert", "assets/light.frag");
 	ew::Shader shadow = ew::Shader("assets/shadow.vert", "assets/shadow.frag");
@@ -218,9 +215,9 @@ int main() {
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
-		const auto light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
-		const auto light_view = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		const auto light_view_proj = light_proj * light_view;
+		//const auto light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+		//const auto light_view = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		//const auto light_view_proj = light_proj * light_view;
 		float time = (float)glfwGetTime();
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
@@ -246,16 +243,16 @@ int main() {
 
 			// NPTE: this is our geomtric-shader
 
-			blinphong.use();
-			blinphong.setMat4("_CameraViewProjection", camera_view_proj);
-			blinphong.setMat4("_Model", glm::translate(planeTransform.position));
+			geometry.use();
+			geometry.setMat4("_CameraViewProjection", camera_view_proj);
+			geometry.setMat4("_Model", glm::translate(planeTransform.position));
 			plane.draw();
 			
 			for (auto i = -3; i <= 4; i++)
 			{
 				for (auto j = -3; j <= 4; j++)
 				{
-					blinphong.setMat4("_Model", glm::translate(glm::vec3(i*2.75f,0,j*2.75f)));
+					geometry.setMat4("_Model", glm::translate(glm::vec3(i*2.75f,0,j*2.75f)));
 					monkeyModel.draw();
 				}
 			}
@@ -274,13 +271,13 @@ int main() {
 			lightShader.setInt("albedo", 0);
 			lightShader.setInt("position", 1);
 			lightShader.setInt("normal", 2);
-			lightShader.setFloat("radius", 2.0f);
-			lightShader.setVec3("mainLightPos", glm::vec3(0.0f, 20.0f, 0.0f));
+			lightShader.setFloat("radius", debug.radius);
 			lightShader.setVec3("cameraPos", camera.position);
 
 			for (auto i = 0; i < 64; i++) {
 				lightShader.setVec3("lights[" + std::to_string(i) + "].position", storedLights[i]);
 				lightShader.setVec3("lights[" + std::to_string(i) + "].color", storedColor[i]);
+				// printf("(%.2f, %.2f, %.2f)", storedLights[i].x, storedLights[i].y, storedLights[i].z);
 			}
 
 			glDisable(GL_DEPTH_TEST);
@@ -302,6 +299,8 @@ int main() {
 			glBindTexture(GL_TEXTURE_2D, framebuffer.color2);
 
 			glDrawArrays(GL_TRIANGLES, 0, 6);
+
+			glBindVertexArray(0);
 		}
 
 		// render all spheres using shader called "light_sphere"
@@ -359,11 +358,12 @@ void drawUI() {
 		resetCamera(&camera, &cameraController);
 	}
 
+	ImGui::SliderFloat("Light Radius", &debug.radius, 0.5f, 10.0f);
+
 	ImVec2 size = ImGui::GetWindowSize();
 	ImGui::Image((ImTextureID)framebuffer.color0, size, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::Image((ImTextureID)framebuffer.color1, size, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::Image((ImTextureID)framebuffer.color2, size, ImVec2(0, 1), ImVec2(1, 0));
-	ImGui::SliderFloat3("Light Position", &light.position.x, 0.0f, 10.0f);
 	ImGui::End();
 
 	ImGui::Render();

@@ -21,48 +21,48 @@ uniform sampler2D position;
 uniform sampler2D normal;
 
 uniform vec3 cameraPos;
-uniform vec3 mainLightPos;
 
-
-float attenutate(float dist, float rad)
-{
-	return clamp((rad-dist)/rad,0.0,1.0);
-}
 float expoAttenutate(float dist, float rad)
 {
-	float i = clamp(1.0 - pow((rad-dist)/rad,4.0),0.0,1.0);
+	float i = clamp(1.0 - pow((dist / rad), 4.0), 0.0, 1.0);
 	return i*i;
 }
 
-vec3 calcPointLight(Light lights, vec3 norm, vec3 pos)
+vec3 blinnPhong(Light light, vec3 fragpos, vec3 normal)
 {
-	vec3 diff = lights.position - pos;
-	vec3 toLight = normalize(diff);
-	float d = length(diff);
-	vec3 lightDir = normalize(lights.position - pos);
-	vec3 lightColor = max(dot(norm,lightDir),0.0) * lights.color;
-	lightColor *= expoAttenutate(d,radius);
-	return lightColor;
+	vec3 view_dir = normalize(cameraPos - fragpos);
+    vec3 light_dir = normalize(light.position - fragpos);
+	vec3 half_way = normalize(light_dir + view_dir);
+
+	float NdotL = max(dot(normal, light_dir), 0.0);
+	float NdotH = max(dot(normal, half_way), 0.0);
+
+	vec3 diffuse = NdotL * vec3(0.5);
+	vec3 specular = pow(NdotH, 0.5 * 128.0) * vec3(0.5);
+
+	float attenuation = expoAttenutate(length(light_dir), radius);
+	return (diffuse + specular) * light.color;
 }
-vec3 calcDirLight(vec3 norm, vec3 pos)
-{
-	vec3 lightDir = normalize(mainLightPos - pos);
-	vec3 viewDir = normalize(cameraPos - pos); //I finally get why we had this. Almost every tutorial I read leaves out directional light calculation.
-	vec3 halfDir = normalize(lightDir + viewDir);
-	return halfDir;
-}
+
 void main()
 {
-	vec3 FragPos = texture(position,fs_in.TexCoord).rgb;
-	vec3 norm = texture(normal,fs_in.TexCoord).rgb;
-	vec3 objCol = texture(albedo,fs_in.TexCoord).rgb;
-	vec3 light = vec3(0);
-	
-	light = calcDirLight(norm,FragPos);
-	for(int i = 0; i < 64;i++)
-	{
-		light += calcPointLight(lights[i],norm,FragPos);
-	}
+	vec2 uv = fs_in.TexCoord;
+	vec3 FragPos = texture(position, uv).rgb;
+	vec3 norm = texture(normal, uv).rgb;
+	vec3 objCol = texture(albedo, uv).rgb;
 
-	FragColor = vec4(objCol * light,1.0);
+//	vec3 lighting = vec3(0);
+//	for(int i = 0; i < 64;i++)
+//	{
+//		lighting += blinnPhong(vec, FragPos, norm);
+//  }
+
+	
+	Light test;
+	test.position = vec3(5.0, 5.0, 0.0);
+	test.color = vec3(1.0, 0.0, 0.0);
+
+	vec3 light_dir = normalize(test.position - FragPos);
+	vec3 lighting = blinnPhong(test, FragPos, norm);
+	FragColor = vec4(lighting, 1.0);
 }
