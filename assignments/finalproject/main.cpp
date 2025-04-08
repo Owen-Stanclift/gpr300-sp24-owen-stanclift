@@ -52,9 +52,43 @@ struct
 {
 	float land_scale = 10.0f;
 	float water_height = 2.0f;
+	float wave_speed = 2.0f;
+	float refreaction_power = 5.0f;
 } debug;
 
 void drawUI();
+
+struct WaterFBO
+{
+	GLuint fbo;
+	GLuint color0;
+	GLuint depth;
+	void waterInit()
+	{
+		glGenFramebuffers(1, &fbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+		glGenTextures(1, &color0);
+		glBindTexture(GL_TEXTURE_2D, color0);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color0, 0);
+
+		glGenTextures(1, &depth);
+		glBindTexture(GL_TEXTURE_2D, depth);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 800, 600, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			printf("glorious failure\n");
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	};
+} waterBuffer;
 
 //Global state
 int screenWidth = 1080;
@@ -68,9 +102,15 @@ int main() {
 	ew::Shader land_shader = ew::Shader("assets/landmass.vert", "assets/landmass.frag");
 	ew::Shader water_shader = ew::Shader("assets/water.vert", "assets/water.frag");
 	GLuint 	heightmap = ew::loadTexture("assets/heightmap.png");
+	GLuint 	waterTexture = ew::loadTexture("assets/wave_tex.png");
+	GLuint 	waterSpec = ew::loadTexture("assets/wave_spec.png");
+	GLuint 	waterWarp = ew::loadTexture("assets/wave_warp.png");
+	GLuint 	dudv = ew::loadTexture("assets/DuDvMap.png");
 
 	ew::Mesh islandPlane;
 	ew::Mesh waterPlane;
+
+	waterBuffer.waterInit();
 
 	islandPlane.load(ew::createPlane(50.0f, 50.0f, 100));
 	waterPlane.load(ew::createPlane(50.0f, 50.0f, 1));
@@ -95,6 +135,17 @@ int main() {
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		//WaterFBO
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, waterBuffer.fbo);
+
+			//Set back
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		}
+
+
+		//Landmass
 		{	// render landmass:
 			glEnable(GL_CULL_FACE);
 			glCullFace(GL_BACK);
@@ -102,16 +153,24 @@ int main() {
 
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, heightmap);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, waterWarp);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, waterSpec);
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, dudv);
+			glEnable(GL_CLIP_DISTANCE0);
 
 			land_shader.use();
 			land_shader.setInt("heightmap", 0);
+			land_shader.setInt("plane", debug.water_height);
 			land_shader.setMat4("model", glm::mat4(1.0f));
 			land_shader.setMat4("view_proj", view_proj);
 			land_shader.setFloat("landmass.scale", debug.land_scale);
 
 			islandPlane.draw();
 		}
-
+		//Water
 		{	// render water:
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -120,6 +179,12 @@ int main() {
 			water_shader.setMat4("model", glm::translate(glm::vec3(0.0f, debug.water_height, 0.0f)));
 			water_shader.setMat4("view_proj", view_proj);
 			water_shader.setVec3("camera_position", camera.position);
+			water_shader.setFloat("tiling", 6.0f);
+			water_shader.setFloat("waveSpeed", debug.wave_speed * glfwGetTime());
+			water_shader.setFloat("power", debug.refreaction_power);
+			water_shader.setInt("reflectTexture", 1);
+			water_shader.setInt("refractTexture", 2);
+			water_shader.setInt("dudvMap", 3);
 			waterPlane.draw();
 		}
 
@@ -146,6 +211,11 @@ void drawUI() {
 
 	ImGui::SliderFloat("Land Height", &debug.land_scale, 0.0f, 10.0f);
 	ImGui::SliderFloat("Water Height", &debug.water_height, 0.0f, 10.0f);
+	ImGui::SliderFloat("Water Speed", &debug.wave_speed, 0.0f, 10.0f);
+	ImGui::SliderFloat("Refractions", &debug.refreaction_power, 0.0f, 10.0f);
+
+	ImVec2 size = ImGui::GetWindowSize();
+	ImGui::Image((ImTextureID)waterBuffer.fbo, size, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::End();
 
 

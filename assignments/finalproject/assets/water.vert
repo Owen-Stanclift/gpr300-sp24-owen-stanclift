@@ -8,17 +8,23 @@ out Surface
 {
 	vec2 TexCoord;
 	vec3 toCamera;
+	vec4  clipSpace;
+	float moveFactor;
 }vs_out;
 
 uniform mat4 model;
 uniform mat4 view_proj;
 uniform vec3 camera_position;
 
+uniform float tiling;
+uniform float waveSpeed;
+
 void main()
 {
-	vs_out.TexCoord = vTexCoord;
-
+	vs_out.TexCoord = vTexCoord * tiling;
+	vs_out.moveFactor = waveSpeed;
 	vec4 WorldPos = model * vec4(vPos,1.0);
+	vs_out.clipSpace = view_proj * WorldPos;
 	vs_out.toCamera = camera_position - WorldPos.xyz;
-	gl_Position = view_proj * WorldPos;
+	gl_Position = vs_out.clipSpace;
 }
