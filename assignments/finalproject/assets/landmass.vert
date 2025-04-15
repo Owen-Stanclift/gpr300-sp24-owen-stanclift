@@ -7,7 +7,8 @@ layout(location = 2) in vec2 vTexCoord;
 uniform mat4 model;
 uniform mat4 view_proj;
 uniform sampler2D heightmap;
-uniform vec3 plane;
+uniform vec4 clipping_plane;
+
 
 struct LandmassProp
 {
@@ -51,8 +52,8 @@ void main()
 		height += local * (kernel[i]/ strength);
 	}
 
-	vec3 pos = vPos;
-	pos.y += height * landmass.scale;
-	gl_ClipDistance[0] = dot(pos,plane)+1;
-	gl_Position = view_proj * model * vec4(pos, 1.0);
+	vec4 WorldPos = model * vec4(vPos, 1.0);
+	WorldPos.y += height * landmass.scale;
+	gl_ClipDistance[0] = dot(WorldPos, clipping_plane);
+	gl_Position = view_proj * WorldPos;
 }

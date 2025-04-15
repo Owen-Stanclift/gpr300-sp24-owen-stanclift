@@ -58,12 +58,12 @@ struct
 
 void drawUI();
 
-struct WaterFBO
+struct Framebuffer
 {
 	GLuint fbo;
 	GLuint color0;
 	GLuint depth;
-	void waterInit()
+	void init()
 	{
 		glGenFramebuffers(1, &fbo);
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -88,7 +88,21 @@ struct WaterFBO
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	};
-} waterBuffer;
+};
+
+struct WaterMaterial {
+	unsigned int spec;
+	unsigned int dudv;
+	unsigned int warp;
+} water_material;
+
+enum {
+	WATER_REFLECTION = 0,
+	WATER_REFRACTION = 1,
+	WATER_COUNT,
+};
+
+Framebuffer waterBuffers[WATER_COUNT];
 
 //Global state
 int screenWidth = 1080;
@@ -96,21 +110,65 @@ int screenHeight = 720;
 float prevFrameTime;
 float deltaTime;
 
+// render terrain:
+void render_terrain(const ew::Camera& camera, GLuint heightmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
+{
+	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
+
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glEnable(GL_DEPTH_TEST);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, heightmap);
+
+	shader.use();
+	shader.setInt("heightmap", 0);
+	shader.setMat4("model", glm::mat4(1.0f));
+	shader.setMat4("view_proj", view_proj);
+	shader.setFloat("landmass.scale", debug.land_scale);
+	shader.setVec4("clipping_plane", clipping_plane);
+
+	mesh.draw();
+}
+
+// render water:
+void render_water(const ew::Camera& camera, const ew::Shader& shader, const ew::Mesh& mesh)
+{
+	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, waterBuffers[WATER_REFLECTION].color0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, waterBuffers[WATER_REFRACTION].color0);
+
+	shader.use();
+	shader.setMat4("model", glm::translate(glm::vec3(0.0f, debug.water_height, 0.0f)));
+	shader.setMat4("view_proj", view_proj);
+	shader.setInt("reflectTexture", 0);
+	shader.setInt("refractTexture", 1);
+
+	mesh.draw();
+}
+
+
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
 
 	ew::Shader land_shader = ew::Shader("assets/landmass.vert", "assets/landmass.frag");
 	ew::Shader water_shader = ew::Shader("assets/water.vert", "assets/water.frag");
 	GLuint 	heightmap = ew::loadTexture("assets/heightmap.png");
-	GLuint 	waterTexture = ew::loadTexture("assets/wave_tex.png");
-	GLuint 	waterSpec = ew::loadTexture("assets/wave_spec.png");
-	GLuint 	waterWarp = ew::loadTexture("assets/wave_warp.png");
-	GLuint 	dudv = ew::loadTexture("assets/DuDvMap.png");
+
+	water_material.dudv = ew::loadTexture("assets/DuDvMap.png");
+	water_material.spec = ew::loadTexture("assets/wave_spec.png");
+	water_material.warp = ew::loadTexture("assets/wave_warp.png"); 
 
 	ew::Mesh islandPlane;
 	ew::Mesh waterPlane;
 
-	waterBuffer.waterInit();
+	waterBuffers[WATER_REFLECTION].init();
+	waterBuffers[WATER_REFRACTION].init();
 
 	islandPlane.load(ew::createPlane(50.0f, 50.0f, 100));
 	waterPlane.load(ew::createPlane(50.0f, 50.0f, 1));
@@ -118,7 +176,7 @@ int main() {
 	camera.position = glm::vec3(0.0f, 5.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
 	camera.aspectRatio = (float)screenWidth / screenHeight;
-	camera.fov = 60.0f;
+	camera.fov = 60.0f; 
 
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	while (!glfwWindowShouldClose(window)) {
@@ -130,63 +188,45 @@ int main() {
 		prevFrameTime = time;
 		cameraController.move(window, &camera, deltaTime);
 
-		const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
+		// WATER_REFLECTION:
+		glBindFramebuffer(GL_FRAMEBUFFER, waterBuffers[WATER_REFLECTION].fbo);
+		{
+			glEnable(GL_CLIP_DISTANCE0);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+			float dist = 2.0f * (camera.position.y - debug.water_height);
+			camera.position.y -= dist;
+			cameraController.pitch *= -1.0f;
+
+			// TODO: MAYBE SET A NEW CAMERA ANGLE;
+			render_terrain(camera, heightmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
+
+			camera.position.y += dist;
+			cameraController.pitch *= -1.0f;
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		// WATER_REFRACTION:
+		glBindFramebuffer(GL_FRAMEBUFFER, waterBuffers[WATER_REFRACTION].fbo);
+		{
+			glEnable(GL_CLIP_DISTANCE0);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			// TODO: MAYBE SET A NEW CAMERA ANGLE;
+			render_terrain(camera, heightmap, land_shader, islandPlane, glm::vec4(0.0, -1.0, 0.0, debug.water_height));
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+		// SKY:
+		glDisable(GL_CLIP_DISTANCE0);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		//WaterFBO
-		{
-			glBindFramebuffer(GL_FRAMEBUFFER, waterBuffer.fbo);
-
-			//Set back
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		}
-
-
-		//Landmass
-		{	// render landmass:
-			glEnable(GL_CULL_FACE);
-			glCullFace(GL_BACK);
-			glEnable(GL_DEPTH_TEST);
-
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, heightmap);
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, waterWarp);
-			glActiveTexture(GL_TEXTURE2);
-			glBindTexture(GL_TEXTURE_2D, waterSpec);
-			glActiveTexture(GL_TEXTURE3);
-			glBindTexture(GL_TEXTURE_2D, dudv);
-			glEnable(GL_CLIP_DISTANCE0);
-
-			land_shader.use();
-			land_shader.setInt("heightmap", 0);
-			land_shader.setInt("plane", debug.water_height);
-			land_shader.setMat4("model", glm::mat4(1.0f));
-			land_shader.setMat4("view_proj", view_proj);
-			land_shader.setFloat("landmass.scale", debug.land_scale);
-
-			islandPlane.draw();
-		}
-		//Water
-		{	// render water:
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-			water_shader.use();
-			water_shader.setMat4("model", glm::translate(glm::vec3(0.0f, debug.water_height, 0.0f)));
-			water_shader.setMat4("view_proj", view_proj);
-			water_shader.setVec3("camera_position", camera.position);
-			water_shader.setFloat("tiling", 6.0f);
-			water_shader.setFloat("waveSpeed", debug.wave_speed * glfwGetTime());
-			water_shader.setFloat("power", debug.refreaction_power);
-			water_shader.setInt("reflectTexture", 1);
-			water_shader.setInt("refractTexture", 2);
-			water_shader.setInt("dudvMap", 3);
-			waterPlane.draw();
-		}
+		render_terrain(camera, heightmap, land_shader, islandPlane, glm::vec4(0.0f));
+		render_water(camera, water_shader, waterPlane);
 
 		// always last.
 		drawUI();
@@ -214,8 +254,13 @@ void drawUI() {
 	ImGui::SliderFloat("Water Speed", &debug.wave_speed, 0.0f, 10.0f);
 	ImGui::SliderFloat("Refractions", &debug.refreaction_power, 0.0f, 10.0f);
 
-	ImVec2 size = ImGui::GetWindowSize();
-	ImGui::Image((ImTextureID)waterBuffer.fbo, size, ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::Text("(%.2f, %.2f, %.2f)", camera.position.x, camera.position.y, camera.position.z);
+
+	ImVec2 size = { 400.0f, 300.0f };
+	ImGui::Text("Refraction (fbo.color0)");
+	ImGui::Image((ImTextureID)waterBuffers[WATER_REFRACTION].color0, size, ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::Text("Reflection (fbo.color0)");
+	ImGui::Image((ImTextureID)waterBuffers[WATER_REFLECTION].color0, size);
 	ImGui::End();
 
 
