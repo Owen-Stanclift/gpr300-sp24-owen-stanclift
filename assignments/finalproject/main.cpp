@@ -111,9 +111,8 @@ float prevFrameTime;
 float deltaTime;
 
 // render terrain:
-void render_terrain(const ew::Camera& camera, GLuint heightmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
+void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane,const glm::mat4 view_proj)
 {
-	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
 
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
@@ -132,9 +131,8 @@ void render_terrain(const ew::Camera& camera, GLuint heightmap, const ew::Shader
 }
 
 // render water:
-void render_water(const ew::Camera& camera, const ew::Shader& shader, const ew::Mesh& mesh)
+void render_water(const ew::Shader& shader, const ew::Mesh& mesh, const glm::mat4 view_proj)
 {
-	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -171,7 +169,7 @@ int main() {
 	waterBuffers[WATER_REFRACTION].init();
 
 	islandPlane.load(ew::createPlane(50.0f, 50.0f, 100));
-	waterPlane.load(ew::createPlane(50.0f, 50.0f, 1));
+	waterPlane.load(ew::createPlane(50.0f, 50.0f, 100));
 
 	camera.position = glm::vec3(0.0f, 5.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -181,7 +179,7 @@ int main() {
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
-
+		const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
 		// always first
 		float time = (float)glfwGetTime();
 		deltaTime = time - prevFrameTime;
@@ -195,16 +193,17 @@ int main() {
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
+			float posOriginal = camera.position.y;
+			float pitchOriginal = cameraController.pitch;
 			float dist = 2.0f * (camera.position.y - debug.water_height);
 			camera.position.y -= dist;
 			cameraController.pitch *= -1.0f;
 
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
-			render_terrain(camera, heightmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
+			render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height),view_proj);
 
-			camera.position.y += dist;
-			cameraController.pitch *= -1.0f;
+			camera.position.y = posOriginal;
+			cameraController.pitch = pitchOriginal;
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -215,7 +214,7 @@ int main() {
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
-			render_terrain(camera, heightmap, land_shader, islandPlane, glm::vec4(0.0, -1.0, 0.0, debug.water_height));
+			render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0, -1.0, 0.0, debug.water_height),view_proj);
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -225,8 +224,8 @@ int main() {
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		render_terrain(camera, heightmap, land_shader, islandPlane, glm::vec4(0.0f));
-		render_water(camera, water_shader, waterPlane);
+		render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0f),view_proj);
+		render_water(water_shader, waterPlane,view_proj);
 
 		// always last.
 		drawUI();
