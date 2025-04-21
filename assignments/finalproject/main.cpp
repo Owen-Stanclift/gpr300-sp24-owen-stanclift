@@ -186,6 +186,8 @@ int main() {
 		prevFrameTime = time;
 		cameraController.move(window, &camera, deltaTime);
 
+		glViewport(0, 0, 800, 600);
+
 		// WATER_REFLECTION:
 		glBindFramebuffer(GL_FRAMEBUFFER, waterBuffers[WATER_REFLECTION].fbo);
 		{
