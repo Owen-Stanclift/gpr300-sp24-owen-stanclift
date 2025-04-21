@@ -29,18 +29,17 @@ void main()
 
 	float near = 0.01;
 	float far = 1000;
-	vec2 distortion1 = texture(dudvMap,vec2(fs_in.TexCord.x + moveFactor,fs_in.TexCord.y)).rg * 2.0 - 1.0;
-	vec2 distortion2 = texture(dudvMap,vec2(-fs_in.TexCord.x + moveFactor,fs_in.TexCord.y + moveFactor)).rg * 2.0 - 1.0;
-	vec2 totalDistortion = distortion1 + distortion2;
+	vec2 distortion = texture(dudvMap,vec2(fs_in.TexCord.x + moveFactor,fs_in.TexCord.y)).rg  * 0.1;
+	distortion += texture(dudvMap,vec2(-fs_in.TexCord.x + moveFactor,fs_in.TexCord.y + moveFactor)).rg * 0.1;
 
-	refractCoord += totalDistortion;
+	refractCoord += distortion;
 	refractCoord = clamp(reflectCoord,0.001,0.999);
 
-	reflectCoord += totalDistortion;
+	reflectCoord += distortion;
 	reflectCoord.x = clamp(reflectCoord.x,0.001,800.0);
 	reflectCoord.y = clamp(reflectCoord.y,-0.999,600.0);
 
-	vec4 normColor = texture(normalMap,totalDistortion);
+	vec4 normColor = texture(normalMap,distortion);
 	vec3 n = vec3(normColor.r*2.0-1.0,normColor.b,normColor.g * 2.0 -1.0);
 	n = normalize(n);
 

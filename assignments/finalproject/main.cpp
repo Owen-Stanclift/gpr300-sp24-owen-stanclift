@@ -228,7 +228,7 @@ int main() {
 			camera.position.y -= distY;
 			camera.position.z -= distZ;
 			cameraController.pitch *= -1.0f;
-			//cameraController.yaw *= -1.0f;
+			cameraController.yaw *= -1.0f;
 
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
 			render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
