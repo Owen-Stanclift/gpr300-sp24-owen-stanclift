@@ -14,6 +14,9 @@
 #include <ew/transform.h>
 #include <ew/texture.h>
 #include <ew/procGen.h>
+#include <cstdlib>
+#include <cstdio>
+#include <GL/glu.h>
 
 //#define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
@@ -113,6 +116,50 @@ struct Light {
 	glm::vec3 lightColor = glm::vec3(1);
 }light;
 
+
+float skyboxVerticies[] =
+{
+	//Cords
+	-1.0f, -1.0f,  1.0f,
+	 1.0f, -1.0f,  1.0f,
+	 1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f, -1.0f,
+	-1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f, -1.0f,
+	-1.0f,  1.0f, -1.0f
+};
+
+unsigned int skyboxIndicies[] =
+{
+	//Right
+	1,2,6,
+	6,5,1,
+
+	//Left
+	0,4,7,
+	7,3,0,
+
+	//Top
+	4,5,6,
+	6,7,4,
+
+	//Bottom
+	0,3,2,
+	2,1,0,
+
+	//Back
+	0,1,5,
+	5,4,0,
+
+	//Front
+	3,7,6,
+	6,2,3
+};
+
+
+
+
 //Global state
 int screenWidth = 1080;
 int screenHeight = 720;
@@ -130,7 +177,7 @@ void recalculateCamera()
 
 	forwardVec.x = cosf(pitchRad) * sinf(yawRad);
 	forwardVec.y = sinf(pitchRad);
-	forwardVec.z = cosf(pitchRad) * -cosf(pitchRad);
+	forwardVec.z = cosf(pitchRad) * -cosf(yawRad);
 
 	forwardVec = glm::normalize(forwardVec);
 
@@ -218,6 +265,48 @@ int main() {
 	camera.aspectRatio = (float)screenWidth / screenHeight;
 	camera.fov = 60.0f; 
 
+
+	unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
+	glGenVertexArrays(1, &skyboxVAO);
+	glGenBuffers(1, &skyboxVBO);
+	glGenBuffers(1, &skyboxEBO);
+	glBindVertexArray(skyboxVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVerticies), &skyboxVerticies, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndicies), &skyboxIndicies, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+
+	std::string faceCubes[6] =
+	{
+		"assets/SkyBoxRight.png",
+		"assets/SkyBoxLeft.png",
+		"assets/SkyBoxTop.png",
+		"assets/SkyBoxBottom.png",
+		"assets/SkyBoxForward.png",
+		"assets/SkyBoxBack.png"
+	};
+
+	unsigned int cubemapTexture;
+	glGenTextures(1, &cubemapTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	for (int i = 0; i < 6; i++)
+	{
+		int width, height, nrChannel;
+		unsigned char* data =  (faceCubes[i].c_str(), &width, &height, &nrChannel, 0);
+	}
+
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -234,7 +323,7 @@ int main() {
 		glBindFramebuffer(GL_FRAMEBUFFER, waterBuffers[WATER_REFLECTION].fbo);
 		{
 			glEnable(GL_CLIP_DISTANCE0);
-			glClearColor(0.2f, 0.2f, 1.0f, 0.0f);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			float distY = 2.0f * (camera.position.y - debug.water_height);
