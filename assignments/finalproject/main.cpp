@@ -152,10 +152,7 @@ struct SkyBuffer
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndicies), &skyboxIndicies, GL_STATIC_DRAW);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
 
 		glGenTextures(1, &sky_material.cubemap);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, sky_material.cubemap);
@@ -260,10 +257,12 @@ void render_sky(const ew::Shader& shader)
 	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
 
 	glActiveTexture(GL_TEXTURE0);
-
+	glGenTextures(0, &sky_material.cubemap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, sky_material.cubemap);
 
 	shader.use();
 	shader.setMat4("view_proj", view_proj);
+	shader.setInt("skybox", 0);
 
 	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 }
