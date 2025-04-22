@@ -14,9 +14,6 @@
 #include <ew/transform.h>
 #include <ew/texture.h>
 #include <ew/procGen.h>
-#include <cstdlib>
-#include <cstdio>
-#include <GL/glu.h>
 
 //#define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
@@ -95,28 +92,6 @@ struct Framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	};
 };
-
-struct WaterMaterial {
-	unsigned int spec;
-	unsigned int dudv;
-	unsigned int normal;
-	unsigned int warp;
-} water_material;
-
-enum {
-	WATER_REFLECTION = 0,
-	WATER_REFRACTION = 1,
-	WATER_COUNT,
-};
-
-Framebuffer waterBuffers[WATER_COUNT];
-
-struct Light {
-	glm::vec3 lightPosition = glm::vec3(0);
-	glm::vec3 lightColor = glm::vec3(1);
-}light;
-
-
 float skyboxVerticies[] =
 {
 	//Cords
@@ -156,6 +131,80 @@ unsigned int skyboxIndicies[] =
 	3,7,6,
 	6,2,3
 };
+
+struct SkyMaterial
+{
+	unsigned int cubemap;
+}sky_material;
+struct SkyBuffer
+{
+	GLuint skyboxVAO, skyboxVBO, skyboxEBO;
+
+	void init()
+	{
+		glGenVertexArrays(1, &skyboxVAO);
+		glGenBuffers(1, &skyboxVBO);
+		glGenBuffers(1, &skyboxEBO);
+		glBindVertexArray(skyboxVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVerticies), &skyboxVerticies, GL_STATIC_DRAW);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndicies), &skyboxIndicies, GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+
+		glGenTextures(1, &sky_material.cubemap);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, sky_material.cubemap);
+		std::string faceCubes[6] =
+		{
+			"assets/SkyBoxRight.png",
+			"assets/SkyBoxLeft.png",
+			"assets/SkyBoxTop.png",
+			"assets/SkyBoxBottom.png",
+			"assets/SkyBoxForward.png",
+			"assets/SkyBoxBack.png"
+		};
+
+		GLuint data[6];
+		for (int i = 0; i < 6; i++)
+		{
+			int width, height, nrChannel;
+			data[i] = ew::loadTexture(faceCubes[i].c_str());
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		}
+	}
+}sky;
+
+struct WaterMaterial {
+	unsigned int spec;
+	unsigned int dudv;
+	unsigned int normal;
+	unsigned int warp;
+} water_material;
+
+enum {
+	WATER_REFLECTION = 0,
+	WATER_REFRACTION = 1,
+	WATER_COUNT,
+};
+
+Framebuffer waterBuffers[WATER_COUNT];
+
+struct Light {
+	glm::vec3 lightPosition = glm::vec3(0);
+	glm::vec3 lightColor = glm::vec3(1);
+}light;
+
+
+
 
 
 
@@ -206,6 +255,18 @@ void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& 
 
 	mesh.draw();
 }
+void render_sky(const ew::Shader& shader)
+{
+	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
+
+	glActiveTexture(GL_TEXTURE0);
+
+
+	shader.use();
+	shader.setMat4("view_proj", view_proj);
+
+	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+}
 
 // render water:
 void render_water(const ew::Shader& shader, const ew::Mesh& mesh)
@@ -244,12 +305,15 @@ int main() {
 
 	ew::Shader land_shader = ew::Shader("assets/landmass.vert", "assets/landmass.frag");
 	ew::Shader water_shader = ew::Shader("assets/water.vert", "assets/water.frag");
+	ew::Shader sky_shader = ew::Shader("assets/skybox.vert", "assets/skybox.frag");
 	GLuint 	heightmap = ew::loadTexture("assets/heightmap.png");
 
 	water_material.dudv = ew::loadTexture("assets/DuDvMap.png");
 	water_material.normal = ew::loadTexture("assets/water_normal.png");
 	water_material.spec = ew::loadTexture("assets/wave_spec.png");
 	water_material.warp = ew::loadTexture("assets/wave_warp.png"); 
+
+	//sky_material.cubemap = ew::loadTexture("assets/SkyBox.png");
 
 	ew::Mesh islandPlane;
 	ew::Mesh waterPlane;
@@ -260,52 +324,15 @@ int main() {
 	islandPlane.load(ew::createPlane(50.0f, 50.0f, 100));
 	waterPlane.load(ew::createPlane(50.0f, 50.0f, 100));
 
+	sky.init();
+
 	camera.position = glm::vec3(0.0f, 5.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
 	camera.aspectRatio = (float)screenWidth / screenHeight;
 	camera.fov = 60.0f; 
 
 
-	unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
-	glGenVertexArrays(1, &skyboxVAO);
-	glGenBuffers(1, &skyboxVBO);
-	glGenBuffers(1, &skyboxEBO);
-	glBindVertexArray(skyboxVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVerticies), &skyboxVerticies, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndicies), &skyboxIndicies, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-
-	std::string faceCubes[6] =
-	{
-		"assets/SkyBoxRight.png",
-		"assets/SkyBoxLeft.png",
-		"assets/SkyBoxTop.png",
-		"assets/SkyBoxBottom.png",
-		"assets/SkyBoxForward.png",
-		"assets/SkyBoxBack.png"
-	};
-
-	unsigned int cubemapTexture;
-	glGenTextures(1, &cubemapTexture);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-	for (int i = 0; i < 6; i++)
-	{
-		int width, height, nrChannel;
-		unsigned char* data =  (faceCubes[i].c_str(), &width, &height, &nrChannel, 0);
-	}
 
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	while (!glfwWindowShouldClose(window)) {
@@ -356,10 +383,17 @@ int main() {
 
 
 		// SKY:
-		glDisable(GL_CLIP_DISTANCE0);
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glViewport(0, 0, screenWidth, screenHeight);
+		glBindVertexArray(sky.skyboxVAO);
+		{
+			glDepthFunc(GL_LEQUAL);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glViewport(0, 0, screenWidth, screenHeight);
+			render_sky(sky_shader);
+
+			glDepthFunc(GL_LESS);
+			glBindVertexArray(0);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0f));
 		render_water(water_shader, waterPlane);
