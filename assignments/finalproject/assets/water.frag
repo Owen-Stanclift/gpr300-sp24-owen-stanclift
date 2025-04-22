@@ -23,7 +23,7 @@ uniform float moveFactor;
 uniform float refractStrength;
 void main()
 {
-	vec2 ndc = (fs_in.clipSpace.xy / fs_in.clipSpace.w) / 2.0 + 0.5;
+	vec3 ndc = (fs_in.clipSpace.xyz / fs_in.clipSpace.w) / 2.0 + 0.5;
 	vec2 refractCoord = vec2(ndc.x, ndc.y);
 	vec2 reflectCoord = vec2(ndc.x, -ndc.y);
 
@@ -36,8 +36,8 @@ void main()
 	refractCoord = clamp(reflectCoord,0.001,0.999);
 
 	reflectCoord += distortion;
-	reflectCoord.x = clamp(reflectCoord.x,0.001,800.0);
-	reflectCoord.y = clamp(reflectCoord.y,-0.999,600.0);
+	reflectCoord.x = clamp(reflectCoord.x,0.001,0.999);
+	reflectCoord.y = clamp(reflectCoord.y,-0.999,-0.001);
 
 	vec4 normColor = texture(normalMap,distortion);
 	vec3 n = vec3(normColor.r*2.0-1.0,normColor.b,normColor.g * 2.0 -1.0);

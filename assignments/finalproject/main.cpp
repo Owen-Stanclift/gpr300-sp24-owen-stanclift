@@ -119,6 +119,27 @@ int screenHeight = 720;
 float prevFrameTime;
 float deltaTime;
 
+//Camera adjustments
+void recalculateCamera()
+{
+	float yawRad = glm::radians(cameraController.yaw);
+
+	float pitchRad = glm::radians(cameraController.pitch);
+
+	glm::vec3 forwardVec;
+
+	forwardVec.x = cosf(pitchRad) * sinf(yawRad);
+	forwardVec.y = sinf(pitchRad);
+	forwardVec.z = cosf(pitchRad) * -cosf(pitchRad);
+
+	forwardVec = glm::normalize(forwardVec);
+
+	glm::vec3 rightVec = glm::normalize(glm::cross(forwardVec, glm::vec3(0, 1, 0)));
+	glm::vec3 upVec = glm::normalize(glm::cross(rightVec, forwardVec));
+	
+	camera.target = camera.position + forwardVec;
+}
+
 // render terrain:
 void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
 {
@@ -216,28 +237,19 @@ int main() {
 			glClearColor(0.2f, 0.2f, 1.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			float posXOriginal = camera.position.x;
-			float posYOriginal = camera.position.y;
-			float posZOriginal = camera.position.z;
-			float pitchOriginal = cameraController.pitch;
-			float yawOriginal = cameraController.yaw;
-			float distX = 2.0f * (camera.position.x);
 			float distY = 2.0f * (camera.position.y - debug.water_height);
-			float distZ = 2.0f * (camera.position.z);
 			//camera.position.x -= distX;
 			camera.position.y -= distY;
-			camera.position.z -= distZ;
+			//camera.position.z -= distZ;
 			cameraController.pitch *= -1.0f;
-			cameraController.yaw *= -1.0f;
+			//cameraController.yaw *= -1.0f;
 
+			recalculateCamera();
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
 			render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
-
-			camera.position.x = posXOriginal;
-			camera.position.y = posYOriginal;
-			camera.position.z = posZOriginal;
-			cameraController.pitch = pitchOriginal;
-			cameraController.yaw = yawOriginal;
+			camera.position.y += distY;
+			cameraController.pitch *= -1.0f;
+			recalculateCamera();
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -258,7 +270,7 @@ int main() {
 		glDisable(GL_CLIP_DISTANCE0);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glViewport(0, 0, 800, 600);
+		glViewport(0, 0, screenWidth, screenHeight);
 
 		render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0f));
 		render_water(water_shader, waterPlane);
