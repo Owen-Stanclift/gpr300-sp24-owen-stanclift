@@ -92,17 +92,19 @@ struct Framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	};
 };
+
+float skySize = 1;
 float skyboxVerticies[] =
 {
 	//Cords
-	-1.0f, -1.0f,  1.0f,
-	 1.0f, -1.0f,  1.0f,
-	 1.0f, -1.0f, -1.0f,
-	-1.0f, -1.0f, -1.0f,
-	-1.0f,  1.0f,  1.0f,
-	 1.0f,  1.0f,  1.0f,
-	 1.0f,  1.0f, -1.0f,
-	-1.0f,  1.0f, -1.0f
+	-skySize, -skySize,  skySize,
+	 skySize, -skySize,  skySize,
+	 skySize, -skySize, -skySize,
+	-skySize, -skySize, -skySize,
+	-skySize,  skySize,  skySize,
+	 skySize,  skySize,  skySize,
+	 skySize,  skySize, -skySize,
+	-skySize,  skySize, -skySize
 };
 
 unsigned int skyboxIndicies[] =
@@ -156,7 +158,7 @@ struct SkyBuffer
 
 		glGenTextures(1, &sky_material.cubemap);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, sky_material.cubemap);
-		std::string faceCubes[6] =
+		vector<std::string> faces =
 		{
 			"assets/SkyBoxRight.png",
 			"assets/SkyBoxLeft.png",
@@ -166,17 +168,8 @@ struct SkyBuffer
 			"assets/SkyBoxBack.png"
 		};
 
-		GLuint data[6];
-		for (int i = 0; i < 6; i++)
-		{
-			int width, height, nrChannel;
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-			data[i] = ew::loadTexture(faceCubes[i].c_str());
-		}
+		sky_material.cubemap = ew::cubeMapTexture(faces, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_LINEAR);
+	
 	}
 }sky;
 
@@ -257,14 +250,13 @@ void render_sky(const ew::Shader& shader)
 	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
 
 	glActiveTexture(GL_TEXTURE0);
-	glGenTextures(0, &sky_material.cubemap);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, sky_material.cubemap);
-
+	glDepthMask(GL_TRUE);
 	shader.use();
 	shader.setMat4("view_proj", view_proj);
 	shader.setInt("skybox", 0);
-
 	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
 }
 
 // render water:
@@ -353,11 +345,8 @@ int main() {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			float distY = 2.0f * (camera.position.y - debug.water_height);
-			//camera.position.x -= distX;
 			camera.position.y -= distY;
-			//camera.position.z -= distZ;
 			cameraController.pitch *= -1.0f;
-			//cameraController.yaw *= -1.0f;
 
 			recalculateCamera();
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
@@ -380,13 +369,15 @@ int main() {
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-
+		glViewport(0, 0, screenWidth, screenHeight);
 		// SKY:
 		glBindVertexArray(sky.skyboxVAO);
 		{
+			glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+			glCullFace(GL_FRONT);
 			glDepthFunc(GL_LEQUAL);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glViewport(0, 0, screenWidth, screenHeight);
 			render_sky(sky_shader);
 
 			glDepthFunc(GL_LESS);
