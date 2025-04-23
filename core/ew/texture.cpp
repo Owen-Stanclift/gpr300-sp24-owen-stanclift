@@ -54,16 +54,24 @@ namespace ew {
 		return texture;
 	}
 	unsigned int cubeMapTexture(vector<std::string>faces, int wrapMode, int magFilter, int minFilter) {
-		int width, height, numComponents;
-
 		unsigned int texture;
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+
+		int width, height, numComponents;
 		for (int i = 0; i < faces.size(); i++)
 		{
 			unsigned char* data = stbi_load(faces.at(i).c_str(), &width, &height, &numComponents, 0);
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-			stbi_image_free(data);
+			if (data)
+			{
+				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+				stbi_image_free(data);
+			}
+			else
+			{
+				std::cout << "Cubemap Fail" <<std::endl;
+				stbi_image_free(data);
+			}
 		}
 
 		//Black border by default
@@ -73,8 +81,6 @@ namespace ew {
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, wrapMode);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, wrapMode);
 
-
-		glBindTexture(GL_TEXTURE_2D, 0);
 		return texture;
 	}
 }

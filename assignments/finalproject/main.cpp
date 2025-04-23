@@ -93,18 +93,52 @@ struct Framebuffer
 	};
 };
 
-float skySize = 1;
+float skySize = 100.0f;
 float skyboxVerticies[] =
 {
 	//Cords
-	-skySize, -skySize,  skySize,
-	 skySize, -skySize,  skySize,
-	 skySize, -skySize, -skySize,
+	-skySize,  skySize, -skySize,
 	-skySize, -skySize, -skySize,
+	 skySize, -skySize, -skySize,
+	 skySize, -skySize, -skySize,
+	 skySize,  skySize, -skySize,
+	-skySize,  skySize, -skySize,
+
+	-skySize, -skySize,  skySize,
+	-skySize, -skySize, -skySize,
+	-skySize,  skySize, -skySize,
+	-skySize,  skySize, -skySize,
 	-skySize,  skySize,  skySize,
+	-skySize, -skySize,  skySize,
+
+	 skySize, -skySize, -skySize,
+	 skySize, -skySize,  skySize,
+	 skySize,  skySize,  skySize,
 	 skySize,  skySize,  skySize,
 	 skySize,  skySize, -skySize,
-	-skySize,  skySize, -skySize
+	 skySize, -skySize, -skySize,
+
+	-skySize, -skySize,  skySize,
+	-skySize,  skySize,  skySize,
+	 skySize,  skySize,  skySize,
+	 skySize,  skySize,  skySize,
+	 skySize, -skySize,  skySize,
+	-skySize, -skySize,  skySize,
+
+	-skySize,  skySize, -skySize,
+	 skySize,  skySize, -skySize,
+	 skySize,  skySize,  skySize,
+	 skySize,  skySize,  skySize,
+	-skySize,  skySize,  skySize,
+	-skySize,  skySize, -skySize,
+
+	-skySize, -skySize, -skySize,
+	-skySize, -skySize,  skySize,
+	 skySize, -skySize, -skySize,
+	 skySize, -skySize, -skySize,
+	-skySize, -skySize,  skySize,
+	 skySize, -skySize,  skySize,
+
 };
 
 unsigned int skyboxIndicies[] =
@@ -133,31 +167,21 @@ unsigned int skyboxIndicies[] =
 	3,7,6,
 	6,2,3
 };
-
-struct SkyMaterial
-{
-	unsigned int cubemap;
-}sky_material;
 struct SkyBuffer
 {
-	GLuint skyboxVAO, skyboxVBO, skyboxEBO;
-
+	GLuint skyboxVAO, skyboxVBO;
+	unsigned int cubemap;
 	void init()
 	{
-		glGenVertexArrays(1, &skyboxVAO);
-		glGenBuffers(1, &skyboxVBO);
-		glGenBuffers(1, &skyboxEBO);
+		glGenVertexArrays(2, &skyboxVAO);
+		glGenBuffers(2, &skyboxVBO);
 		glBindVertexArray(skyboxVAO);
 		glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVerticies), &skyboxVerticies, GL_STATIC_DRAW);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndicies), &skyboxIndicies, GL_STATIC_DRAW);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 		glEnableVertexAttribArray(0);
 		glBindVertexArray(0);
 
-		glGenTextures(1, &sky_material.cubemap);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, sky_material.cubemap);
 		vector<std::string> faces =
 		{
 			"assets/SkyBoxRight.png",
@@ -168,7 +192,7 @@ struct SkyBuffer
 			"assets/SkyBoxBack.png"
 		};
 
-		sky_material.cubemap = ew::cubeMapTexture(faces, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_LINEAR);
+		cubemap = ew::cubeMapTexture(faces, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_LINEAR);
 	
 	}
 }sky;
@@ -250,12 +274,12 @@ void render_sky(const ew::Shader& shader)
 	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
 
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, sky_material.cubemap);
-	glDepthMask(GL_TRUE);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, sky.cubemap);
+	//glDepthMask(GL_FALSE);
 	shader.use();
 	shader.setMat4("view_proj", view_proj);
-	shader.setInt("skybox", 0);
-	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+	//shader.setInt("skybox", 0);
+	glDrawArrays(GL_TRIANGLES, 0, 36);
 
 }
 
@@ -299,6 +323,8 @@ int main() {
 	ew::Shader sky_shader = ew::Shader("assets/skybox.vert", "assets/skybox.frag");
 	GLuint 	heightmap = ew::loadTexture("assets/heightmap.png");
 
+	sky.init();
+
 	water_material.dudv = ew::loadTexture("assets/DuDvMap.png");
 	water_material.normal = ew::loadTexture("assets/water_normal.png");
 	water_material.spec = ew::loadTexture("assets/wave_spec.png");
@@ -314,8 +340,6 @@ int main() {
 
 	islandPlane.load(ew::createPlane(50.0f, 50.0f, 100));
 	waterPlane.load(ew::createPlane(50.0f, 50.0f, 100));
-
-	sky.init();
 
 	camera.position = glm::vec3(0.0f, 5.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -373,14 +397,16 @@ int main() {
 		// SKY:
 		glBindVertexArray(sky.skyboxVAO);
 		{
-			glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-			glCullFace(GL_FRONT);
+			//glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+			//glCullFace(GL_FRONT);
 			glDepthFunc(GL_LEQUAL);
-			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glEnableVertexAttribArray(0);
 			render_sky(sky_shader);
 
 			glDepthFunc(GL_LESS);
+			glDepthMask(GL_TRUE);
 			glBindVertexArray(0);
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -423,6 +449,8 @@ void drawUI() {
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFRACTION].color0, size, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::Text("Reflection (fbo.color0)");
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFLECTION].color0, size);
+	ImGui::Text("Skybox (skybox.vao)");
+	ImGui::Image((ImTextureID)sky.cubemap, size);
 	ImGui::End();
 
 
