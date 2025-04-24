@@ -278,7 +278,7 @@ void render_sky(const ew::Shader& shader)
 	//glDepthMask(GL_FALSE);
 	shader.use();
 	shader.setMat4("view_proj", view_proj);
-	//shader.setInt("skybox", 0);
+	shader.setInt("skybox", 0);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 
 }
