@@ -45,6 +45,7 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 GLFWwindow* initWindow(const char* title, int width, int height);
 ew::Camera camera;
 ew::CameraController cameraController;
+ew::Mesh lightSphere;
 
 
 // imgui uniforms
@@ -54,7 +55,7 @@ struct
 	float water_height = 2.0f;
 	float wave_speed = 0.1f;
 	float refreaction_power = 5.0f;
-	float wave_length = 0.02;
+	float wave_length = 10.0f;
 	int tiles = 5;
 } debug;
 
@@ -211,9 +212,10 @@ enum {
 };
 
 Framebuffer waterBuffers[WATER_COUNT];
+Framebuffer lightBuffer;
 
 struct Light {
-	glm::vec3 lightPosition = glm::vec3(0);
+	glm::vec3 lightPosition = glm::vec3(0,15,0);
 	glm::vec3 lightColor = glm::vec3(1);
 }light;
 
@@ -250,6 +252,16 @@ void recalculateCamera()
 	camera.target = camera.position + forwardVec;
 }
 
+void render_light(const ew::Shader& shader, const ew::Mesh& sphere)
+{
+	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
+	shader.use();
+	shader.setMat4("_CameraViewProjection", view_proj);
+	shader.setMat4("_Model", glm::translate(light.lightPosition));
+	shader.setVec3("color", light.lightColor);
+	sphere.draw();
+
+}
 // render terrain:
 void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
 {
@@ -314,6 +326,7 @@ void render_water(const ew::Shader& shader, const ew::Mesh& mesh)
 	shader.setInt("skybox", 4);
 	shader.setFloat("refractStrength", debug.refreaction_power);
 	shader.setFloat("moveFactor", moveFactor);
+	shader.setFloat("waveLength", debug.wave_length);
 	mesh.draw();
 }
 
@@ -324,9 +337,12 @@ int main() {
 	ew::Shader land_shader = ew::Shader("assets/landmass.vert", "assets/landmass.frag");
 	ew::Shader water_shader = ew::Shader("assets/water.vert", "assets/water.frag");
 	ew::Shader sky_shader = ew::Shader("assets/skybox.vert", "assets/skybox.frag");
+	ew::Shader light_shader = ew::Shader("assets/lightSphere.vert", "assets/lightSphere.frag");
 	GLuint 	heightmap = ew::loadTexture("assets/heightmap.png");
 
 	sky.init();
+
+
 
 	water_material.dudv = ew::loadTexture("assets/DuDvMap.png");
 	water_material.normal = ew::loadTexture("assets/water_normal.png");
@@ -340,9 +356,12 @@ int main() {
 
 	waterBuffers[WATER_REFLECTION].init();
 	waterBuffers[WATER_REFRACTION].init();
+	lightBuffer.init();
 
 	islandPlane.load(ew::createPlane(50.0f, 50.0f, 100));
 	waterPlane.load(ew::createPlane(50.0f, 50.0f, 100));
+	lightSphere.load(ew::createSphere(1.0f, 12));
+
 
 	camera.position = glm::vec3(0.0f, 5.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -361,7 +380,6 @@ int main() {
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
 		cameraController.move(window, &camera, deltaTime);
-
 		glViewport(0, 0, 800, 600);
 
 		// WATER_REFLECTION:
@@ -376,6 +394,21 @@ int main() {
 			cameraController.pitch *= -1.0f;
 
 			recalculateCamera();
+			// SKY:
+			glBindVertexArray(sky.skyboxVAO);
+			{
+				glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+				//glCullFace(GL_FRONT);
+				glDepthFunc(GL_LEQUAL);
+				glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				glEnableVertexAttribArray(0);
+				render_sky(sky_shader);
+
+				glDepthFunc(GL_LESS);
+				glDepthMask(GL_TRUE);
+				glBindVertexArray(0);
+			}
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
 			render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
 			camera.position.y += distY;
@@ -391,11 +424,14 @@ int main() {
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glViewport(0, 0, 800, 600);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
 			render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0, -1.0, 0.0, debug.water_height));
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, screenWidth, screenHeight);
 		// SKY:
 		glBindVertexArray(sky.skyboxVAO);
@@ -416,6 +452,7 @@ int main() {
 
 		render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0f));
 		render_water(water_shader, waterPlane);
+		render_light(light_shader, lightSphere);
 
 		// always last.
 		drawUI();
@@ -441,7 +478,7 @@ void drawUI() {
 	ImGui::SliderFloat("Land Height", &debug.land_scale, 0.0f, 10.0f);
 	ImGui::SliderFloat("Water Height", &debug.water_height, 0.0f, 10.0f);
 	ImGui::SliderFloat("Water Speed", &debug.wave_speed, 0.0f, 1.0f);
-	ImGui::SliderFloat("Water Length", &debug.wave_length, 0.0f, 100.0f);
+	ImGui::SliderFloat("Water Length", &debug.wave_length, 0.0f, 500.0f);
 	ImGui::SliderFloat("Refractions", &debug.refreaction_power, 0.0f, 10.0f);
 	ImGui::SliderInt("Tiles", &debug.tiles, 0.0f, 10.0f);
 
@@ -452,8 +489,11 @@ void drawUI() {
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFRACTION].color0, size, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::Text("Reflection (fbo.color0)");
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFLECTION].color0, size);
-	ImGui::Text("Skybox (skybox.vao)");
+	ImGui::Text("Skybox (Should show data)");
 	ImGui::Image((ImTextureID)sky.cubemap, size);
+	ImGui::Text("Light");
+	ImGui::SliderFloat3("LightPosition", &light.lightPosition.x, -20, 20);
+	ImGui::SliderFloat3("LightColor", &light.lightColor.x, 0, 1);
 	ImGui::End();
 
 

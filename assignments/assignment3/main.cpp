@@ -196,7 +196,7 @@ int main() {
 	depthbuffer.Init();
 	fullscreen_quad.Init();
 
-	lightSphere.load(ew::createSphere(0.5f, 4));
+	lightSphere.load(ew::createSphere(2.0f, 4));
 	glm::vec3 storedLights[64];
 	glm::vec3 storedColor[64];
 	int count = 0;
