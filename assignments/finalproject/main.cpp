@@ -93,7 +93,7 @@ struct Framebuffer
 	};
 };
 
-float skySize = 10.0f;
+float skySize = 1.0f;
 float skyboxVerticies[] =
 {
 	//Cords
@@ -184,12 +184,12 @@ struct SkyBuffer
 
 		vector<std::string> faces =
 		{
-			"assets/SkyBoxRight.png",
-			"assets/SkyBoxLeft.png",
-			"assets/SkyBoxTop.png",
-			"assets/SkyBoxBottom.png",
-			"assets/SkyBoxForward.png",
-			"assets/SkyBoxBack.png"
+			"assets/right.jpg",
+			"assets/left.jpg",
+			"assets/bottom.jpg",
+			"assets/top.jpg",
+			"assets/front.jpg",
+			"assets/back.jpg"
 		};
 
 		cubemap = ew::cubeMapTexture(faces, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_LINEAR);
@@ -271,7 +271,7 @@ void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& 
 }
 void render_sky(const ew::Shader& shader)
 {
-	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
+	const auto view_proj = camera.projectionMatrix() * glm::mat4(glm::mat3(camera.viewMatrix()));
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, sky.cubemap);
@@ -297,6 +297,8 @@ void render_water(const ew::Shader& shader, const ew::Mesh& mesh)
 	glBindTexture(GL_TEXTURE_2D, water_material.dudv);
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, water_material.normal);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, sky.cubemap);
 
 	shader.use();
 	shader.setMat4("model", glm::translate(glm::vec3(0.0f, debug.water_height, 0.0f)));
@@ -309,6 +311,7 @@ void render_water(const ew::Shader& shader, const ew::Mesh& mesh)
 	shader.setInt("refractTexture", 1);
 	shader.setInt("dudvMap", 2);
 	shader.setInt("normalMap", 3);
+	shader.setInt("skybox", 4);
 	shader.setFloat("refractStrength", debug.refreaction_power);
 	shader.setFloat("moveFactor", moveFactor);
 	mesh.draw();

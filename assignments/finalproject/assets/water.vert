@@ -10,6 +10,7 @@ out Surface
 	vec4 clipSpace;
 	vec3 to_camera;
 	vec3 lightVec;
+	vec3 normal;
 } vs_out;
 
 uniform mat4 model;
@@ -24,7 +25,8 @@ void main()
 	vec4 WorldPos = model * vec4(vPos, 1.0);
 	vs_out.TexCord =  vTexCoord;
 	vs_out.clipSpace = view_proj * WorldPos;
-	vs_out.to_camera = camera_position - WorldPos.xyz;
+	vs_out.to_camera = WorldPos.xyz - camera_position;
 	vs_out.lightVec = WorldPos.xyz - lightPosition;
+	vs_out.normal = vNormal;
 	gl_Position = vs_out.clipSpace;
 }

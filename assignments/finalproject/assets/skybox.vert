@@ -12,6 +12,6 @@ uniform mat4 view_proj;
 void main()
 {
 	vec4 WorldPos = view_proj * vec4(vPos,1.0f);
-	vs_out.TexCord = vec3(vPos.x,vPos.y,vPos.z);
+	vs_out.TexCord = vec3(vPos.x,-vPos.y,vPos.z);
 	gl_Position =  vec4(WorldPos.x,WorldPos.y,WorldPos.w,WorldPos.w);
 }
