@@ -93,7 +93,7 @@ struct Framebuffer
 	};
 };
 
-float skySize = 100.0f;
+float skySize = 10.0f;
 float skyboxVerticies[] =
 {
 	//Cords
@@ -170,7 +170,7 @@ unsigned int skyboxIndicies[] =
 struct SkyBuffer
 {
 	GLuint skyboxVAO, skyboxVBO;
-	unsigned int cubemap;
+	GLuint cubemap;
 	void init()
 	{
 		glGenVertexArrays(2, &skyboxVAO);
@@ -275,7 +275,7 @@ void render_sky(const ew::Shader& shader)
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, sky.cubemap);
-	//glDepthMask(GL_FALSE);
+	glDepthMask(GL_FALSE);
 	shader.use();
 	shader.setMat4("view_proj", view_proj);
 	shader.setInt("skybox", 0);
@@ -397,7 +397,7 @@ int main() {
 		// SKY:
 		glBindVertexArray(sky.skyboxVAO);
 		{
-			//glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+			glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 			//glCullFace(GL_FRONT);
 			glDepthFunc(GL_LEQUAL);
 			glClearColor(0.1f, 0.1f, 0.1f, 0.1f);

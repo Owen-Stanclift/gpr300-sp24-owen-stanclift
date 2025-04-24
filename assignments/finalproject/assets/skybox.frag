@@ -10,10 +10,10 @@ in Surface
 
 //colors
 uniform samplerCube skybox;
-
+vec4 skycolor = vec4(0.0,0.0,0.0,0.0);
 void main()
 {
 	
-	//FragColor = texture(skybox,fs_in.TexCord);
-	FragColor = vec4(1.0,0.0,1.0,1.0);
+	vec4 sky = texture(skybox,fs_in.TexCord);
+	FragColor = mix(sky,skycolor,0.5);
 }
