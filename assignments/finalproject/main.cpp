@@ -452,9 +452,9 @@ int main() {
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+		render_light(light_shader, lightSphere);
 		render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0f));
 		render_water(water_shader, waterPlane);
-		render_light(light_shader, lightSphere);
 
 		// always last.
 		drawUI();
