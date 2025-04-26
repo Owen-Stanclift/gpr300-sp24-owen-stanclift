@@ -254,14 +254,14 @@ void recalculateCamera()
 	camera.target = camera.position + forwardVec;
 }
 
-void render_light(const ew::Shader& shader, const ew::Mesh& sphere)
+void render_light(const ew::Shader& shader, const ew::Mesh& sphere, const glm::vec4 clipping_plane)
 {
 	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
 	shader.use();
 	shader.setMat4("_CameraViewProjection", view_proj);
 	shader.setMat4("_Model", glm::translate(light.lightPosition));
 	shader.setVec3("color", light.lightColor);
-	shader.setVec3("cameraPos", camera.position);
+	shader.setVec4("clipping_plane", clipping_plane);
 	sphere.draw();
 
 }
@@ -412,6 +412,7 @@ int main() {
 				glDepthMask(GL_TRUE);
 				glBindVertexArray(0);
 			}
+			render_light(light_shader, lightSphere, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
 			render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
 			camera.position.y += distY;
@@ -453,7 +454,7 @@ int main() {
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		render_light(light_shader, lightSphere);
+		render_light(light_shader, lightSphere,glm::vec4(0.0f));
 		render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0f));
 		render_water(water_shader, waterPlane);
 
