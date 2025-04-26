@@ -33,13 +33,14 @@ void main()
 	float near = 0.01;
 	float far = 1000;
 	//moveFactor = clamp(moveFactor,0,1);
-	vec2 distortion = (texture(dudvMap,vec2((fs_in.TexCord.x) + (moveFactor),fs_in.TexCord.y)).rg * 0.1) ;
-	distortion *= (texture(dudvMap,vec2((-fs_in.TexCord.x) + (moveFactor) ,(fs_in.TexCord.y) + (moveFactor))).rg * 0.1);
+	vec2 distortion = (texture(dudvMap,vec2((fs_in.TexCord.x) + (moveFactor),fs_in.TexCord.y)).rg) ;
+	distortion = fs_in.TexCord + vec2(distortion.x,distortion.y+moveFactor);
+	vec2 totalDistortion = (texture(dudvMap,distortion).rg * 2.0 - 1.0) * 0.02;
 //
-	refractCoord += distortion;
+	refractCoord += totalDistortion;
 	//refractCoord = clamp(reflectCoord,0.001,0.999);
 
-	reflectCoord += distortion;
+	reflectCoord += totalDistortion;
 	//reflectCoord.x = clamp(reflectCoord.x,0.001,0.999);
 	//reflectCoord.y = clamp(reflectCoord.y,-0.999,-0.001);
 
@@ -47,13 +48,14 @@ void main()
 	vec3 n = vec3(normColor.r*2.0-1.0,normColor.b,normColor.g * 2.0 -1.0);
 	n = normalize(n);
 
-	vec3 halfDir = normalize(-100*fs_in.lightVec + fs_in.to_camera);
+	vec3 halfDir = normalize(fs_in.lightVec + fs_in.to_camera);
 	float NdotL = max(dot(n,fs_in.lightVec),0.0);
 	float NdotH = max(dot(n,halfDir),0.0);
 
 	vec3 reflectLight = reflect(normalize(-fs_in.lightVec),n);
-	float spec = pow(NdotH,0.25 * 128);
-	vec3 highLights = lightColor * spec * 0.5;
+	float spec = max(dot(reflectLight,halfDir),0);
+	spec = pow(spec,0.25*128);
+	vec3 highLights = lightColor * spec * 0.5 * NdotH;
 //
 	vec4 reflectTex = texture(reflectTexture, reflectCoord);
 	vec4 refractTex = texture(refractTexture, refractCoord);

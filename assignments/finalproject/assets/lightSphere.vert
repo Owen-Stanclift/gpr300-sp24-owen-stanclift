@@ -7,7 +7,16 @@ layout(location = 2) in vec2 vTexCoord;
 uniform mat4 _CameraViewProjection;
 uniform mat4 _Model;
 
+out Surface
+{
+	vec3 normal;
+	vec3 worldPos;
+} vs_out;
+
 void main()
 {
-	gl_Position = _CameraViewProjection * _Model * vec4(vPos,1.0);
+	vs_out.normal = vNormal;
+	vec4 WorldPos = _Model * vec4(vPos,1.0);
+	vs_out.worldPos = WorldPos.xyz;
+	gl_Position = _CameraViewProjection * WorldPos;
 }

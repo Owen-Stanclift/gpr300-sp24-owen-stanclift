@@ -76,7 +76,7 @@ struct Framebuffer
 
 		glGenTextures(1, &color0);
 		glBindTexture(GL_TEXTURE_2D, color0);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 800, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color0, 0);
@@ -261,6 +261,7 @@ void render_light(const ew::Shader& shader, const ew::Mesh& sphere)
 	shader.setMat4("_CameraViewProjection", view_proj);
 	shader.setMat4("_Model", glm::translate(light.lightPosition));
 	shader.setVec3("color", light.lightColor);
+	shader.setVec3("cameraPos", camera.position);
 	sphere.draw();
 
 }
