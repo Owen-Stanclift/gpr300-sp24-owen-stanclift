@@ -34,7 +34,7 @@ void main()
 	float far = 1000;
 	//moveFactor = clamp(moveFactor,0,1);
 	vec2 distortion = (texture(dudvMap,vec2((fs_in.TexCord.x) + (moveFactor),fs_in.TexCord.y)).rg * 0.1) ;
-	distortion *= (texture(dudvMap,vec2((fs_in.TexCord.x) + (moveFactor) ,(fs_in.TexCord.y) + (moveFactor))).rg * 0.1);
+	distortion *= (texture(dudvMap,vec2((-fs_in.TexCord.x) + (moveFactor) ,(fs_in.TexCord.y) + (moveFactor))).rg * 0.1);
 //
 	refractCoord += distortion;
 	//refractCoord = clamp(reflectCoord,0.001,0.999);

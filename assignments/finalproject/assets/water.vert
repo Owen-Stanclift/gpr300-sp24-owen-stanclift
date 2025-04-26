@@ -25,7 +25,7 @@ void main()
 	vec4 WorldPos = model * vec4(vPos, 1.0);
 	vs_out.TexCord =  vTexCoord;
 	vs_out.clipSpace = view_proj * WorldPos;
-	vs_out.to_camera = WorldPos.xyz - camera_position;
+	vs_out.to_camera = camera_position - WorldPos.xyz;
 	vs_out.lightVec =  vec3(lightPosition.x,-lightPosition.y,lightPosition.z) - WorldPos.xyz;
 	vs_out.normal = vNormal;
 	gl_Position = vs_out.clipSpace;
