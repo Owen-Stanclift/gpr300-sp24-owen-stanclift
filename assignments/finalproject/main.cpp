@@ -269,6 +269,12 @@ void render_light(const ew::Shader& shader, const ew::Mesh& sphere, const glm::v
 void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
 {
 	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
+
+	const auto light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+	const auto light_view = glm::lookAt(light.lightPosition, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	const auto light_view_proj = light_proj * light_view;
+
+
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glEnable(GL_DEPTH_TEST);
@@ -281,6 +287,9 @@ void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& 
 	shader.setMat4("view_proj", view_proj);
 	shader.setFloat("landmass.scale", debug.land_scale);
 	shader.setVec4("clipping_plane", clipping_plane);
+	shader.setVec3("lightPos", light.lightPosition);
+	shader.setMat4("lightProj",light_view_proj);
+	shader.setVec3("cameraPos", camera.position);
 
 	mesh.draw();
 }
