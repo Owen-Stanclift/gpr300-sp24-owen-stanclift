@@ -54,68 +54,69 @@ const float kernel[9] = float[](
 	1.0, 2.0, 1.0 
 );
 const float steps = 10;
-void shadowHeightMap(vec2 texOffset,float height)
+void shadowHeightMap(vec2 texOffset,vec3 lightDir, float height)
 {
 
 		vec3 p = vec3(texOffset,height);
-		vec3 lightOffset = vec3(light.x,-light.z,-light.y);
-		vec3 stepDir = (lightOffset - p)/100;
+		vec3 stepDir = normalize(lightDir);
+		float minStepSize;
 		for(int i=0; i < steps; i++)
 		{
-		vs_out.inShadow = 0;
-		p += stepDir;
-		float h = texture(heightmap,p.xy).r;
+			vs_out.inShadow = 0;
+			p += stepDir * max(minStepSize,(p.z-height) * 0.05);
+			float h = texture(heightmap,p.xy).r;
 
-		if(h > p.z)
+			if(h > p.z)
 			{
-			vs_out.inShadow = 1;
-			break;
+				vs_out.inShadow = 1;
+				break;
 			}
 
-		if(p.z > 1)
+			if(p.z > 1)
 			{
-			break;
+				break;
 			}
 		}
 }
 
-vec3 calculateNormal(vec2 pos)
+vec3 calculateNormal(vec2 pos, vec3 off,float height)
 {
-	vec3 off = vec3(1.0,1.0,0.0);
-	float hL = dot(pos,-off.xz);
-	float hR = dot(pos,off.xz);
-	float hD = dot(pos,-off.zy);
-	float hU = dot(pos,off.zy);
+	float hL = height * dot(pos,-off.xz);
+	float hR = height *dot(pos,off.xz);
+	float hD = height *dot(pos,-off.zy);
+	float hU = height * dot(pos,off.zy);
 
 
 	vec3 N = vec3(0);
 	N.x = hL - hR;
 	N.y = hD - hU;
-	N.z = 2.0;
+	N.z = 1.0;
 	N = normalize(N);
 	return N;
 };
 void main()
 {
-	light = lightPos * vec3(1,-1,1);
+	light = lightPos.xzy * vec3(1,1,-1);
 	vs_out.TexCoord = vTexCoord;
 	float height = 0.0;
+	vec3 norm = vec3(0);
+		vec3 lightDir = light - vec3(0);
+	vec3 stepDir = normalize(lightDir);
 	for(int i = 0; i <9;i++)
 	{
 		vec2 hPos = vTexCoord + offsets[i].xy;
 		float local = texture(heightmap,hPos).r;
 		height += local * (kernel[i]/ strength);
-		shadowHeightMap(hPos,height);
+		norm = calculateNormal(hPos,offsets[i],height);
+		shadowHeightMap(hPos,lightDir,height);
 	}
 	
-
-	vec3 lightDir = light - vPos;
-	vec3 stepDir = normalize(lightDir);
 	vec4 WorldPos = model * vec4(vPos, 1.0);
 	WorldPos.y += height * landmass.scale;
 	vs_out.lightPosition = lightProj * WorldPos;
 	vs_out.WorldPosition = WorldPos.xyz;
-	vec3 norm = calculateNormal(vTexCoord);
+
+
 	vs_out.normalShadow = (dot(norm, -stepDir) + 1)/2;
 	gl_ClipDistance[0] = dot(WorldPos, clipping_plane);
 	gl_Position = view_proj * WorldPos;
