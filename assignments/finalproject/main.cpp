@@ -283,8 +283,6 @@ void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& 
 	glEnable(GL_DEPTH_TEST);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, heightmap);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, landShadowBuffer.depth);
 
 	shader.use();
 	shader.setInt("heightmap", 0);
@@ -293,9 +291,7 @@ void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& 
 	shader.setFloat("landmass.scale", debug.land_scale);
 	shader.setVec4("clipping_plane", clipping_plane);
 	shader.setVec3("lightPos", light.lightPosition);
-	shader.setMat4("lightProj",light_view_proj);
 	shader.setVec3("cameraPos", camera.position);
-	shader.setInt("depth", 1);
 
 	mesh.draw();
 }
@@ -508,8 +504,6 @@ void drawUI() {
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFRACTION].color0, size, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::Text("Reflection (fbo.color0)");
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFLECTION].color0, size);
-	ImGui::Text("Shadow (landShaowBuffer.depth)");
-	ImGui::Image((ImTextureID)0, size);
 	ImGui::Text("Skybox (Should show data)");
 	ImGui::Image((ImTextureID)sky.cubemap, size);
 	ImGui::Text("Light");

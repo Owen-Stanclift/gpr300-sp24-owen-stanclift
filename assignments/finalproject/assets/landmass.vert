@@ -9,7 +9,6 @@ uniform mat4 view_proj;
 uniform sampler2D heightmap;
 uniform vec4 clipping_plane;
 uniform vec3 lightPos;
-uniform mat4 lightProj;
 
 struct LandmassProp
 {
@@ -20,9 +19,8 @@ uniform LandmassProp landmass;
 out Surface
 {
 	vec2 TexCoord;
-	float inShadow;
 	float normalShadow;
-	vec4 lightPosition;
+	vec3 lightDirection;
 	vec3 WorldPosition;
 }vs_out;
 
@@ -54,30 +52,6 @@ const float kernel[9] = float[](
 	1.0, 2.0, 1.0 
 );
 const float steps = 10;
-void shadowHeightMap(vec2 texOffset,vec3 lightDir, float height)
-{
-
-		vec3 p = vec3(texOffset,height);
-		vec3 stepDir = normalize(lightDir);
-		float minStepSize;
-		for(int i=0; i < steps; i++)
-		{
-			vs_out.inShadow = 0;
-			p += stepDir * max(minStepSize,(p.z-height) * 0.05);
-			float h = texture(heightmap,p.xy).r;
-
-			if(h > p.z)
-			{
-				vs_out.inShadow = 1;
-				break;
-			}
-
-			if(p.z > 1)
-			{
-				break;
-			}
-		}
-}
 
 vec3 calculateNormal(vec2 pos, vec3 off,float height)
 {
@@ -96,24 +70,23 @@ vec3 calculateNormal(vec2 pos, vec3 off,float height)
 };
 void main()
 {
-	light = lightPos.xzy * vec3(1,1,-1);
+	light = lightPos.xyz * vec3(1,1,1);
 	vs_out.TexCoord = vTexCoord;
 	float height = 0.0;
 	vec3 norm = vec3(0);
-		vec3 lightDir = light - vec3(0);
+	vec3 lightDir = light - vPos;
 	vec3 stepDir = normalize(lightDir);
 	for(int i = 0; i <9;i++)
 	{
 		vec2 hPos = vTexCoord + offsets[i].xy;
 		float local = texture(heightmap,hPos).r;
 		height += local * (kernel[i]/ strength);
-		norm = calculateNormal(hPos,offsets[i],height);
-		shadowHeightMap(hPos,lightDir,height);
+		norm = calculateNormal(hPos,offsets[i],local);
 	}
 	
 	vec4 WorldPos = model * vec4(vPos, 1.0);
 	WorldPos.y += height * landmass.scale;
-	vs_out.lightPosition = lightProj * WorldPos;
+	vs_out.lightDirection = lightDir;
 	vs_out.WorldPosition = WorldPos.xyz;
 
 

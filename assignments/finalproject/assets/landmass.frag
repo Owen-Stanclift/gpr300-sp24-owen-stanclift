@@ -6,15 +6,15 @@ out vec4 FragColor;
 in Surface
 {
     vec2 TexCoord;
-    float inShadow;
     float normalShadow;
-    vec4 lightPosition;
+    vec3 lightDirection;
     vec3 WorldPosition;
 }fs_in;
 
-uniform sampler2D depth;
 uniform sampler2D heightmap;
 uniform vec3 cameraPos;
+
+float inShadow;
 
 //Calculations:
 const float offset = 1.0 / 2048.0;
@@ -37,22 +37,44 @@ const float kernel[9] = float[](
     1.0, 2.0, 1.0 
 );
 
+const float steps = 10;
+void shadowHeightMap(vec2 texOffset,vec3 lightDir, float height)
+{
+
+		vec3 p = vec3(texOffset,height);
+		vec3 stepDir = normalize(lightDir);
+        float minStepSize;
+		for(int i=0; i < steps; i++)
+		{
+			inShadow = 0;
+			p += stepDir * max(minStepSize,(p.z-height) * 0.05);
+			float h = texture(heightmap,p.xy).r;
+
+			if(h > p.z)
+			{
+				inShadow = 1;
+				break;
+			}
+
+			if(p.z > 1)
+			{
+				break;
+			}
+		}
+}
 
 void main()
 {
-    vec2 ndc = (fs_in.lightPosition.xy / fs_in.lightPosition.w) / 2.0 + 0.5;
-	vec2 shadowCord = vec2(ndc.x, ndc.y);
 	float n = 0.0;
 	for(int i = 0; i <9; i++)
 	{
-		float local = texture(heightmap,fs_in.TexCoord + offsets[i]).r;
+    	vec2 hPos = fs_in.TexCoord + offsets[i];
+		float local = texture(heightmap,hPos).r;
 		n += local * (kernel[i]/strength);
+        shadowHeightMap(hPos,fs_in.lightDirection,local);
 	}
-    vec4 shadowCol = vec4(0.0,0.0,0.0,1);
 
-    float normShadow = clamp(fs_in.inShadow+fs_in.normalShadow,0,1);
-
-    vec4 shadow = texture(depth,ndc);
+    float normShadow = clamp(inShadow+fs_in.normalShadow,0,1);
     //FragColor = shadow * normShadow;
 	if (n <= 0.3) {
         // Light teal or watery blue
