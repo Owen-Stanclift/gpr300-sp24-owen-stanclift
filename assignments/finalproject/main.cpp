@@ -269,7 +269,7 @@ void render_light(const ew::Shader& shader, const ew::Mesh& sphere, const glm::v
 
 }
 // render terrain:
-void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
+void render_terrain(GLuint heightmap, GLuint normalmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
 {
 	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
 
@@ -283,14 +283,18 @@ void render_terrain(GLuint heightmap, const ew::Shader& shader, const ew::Mesh& 
 	glEnable(GL_DEPTH_TEST);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, heightmap);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, normalmap);
 
 	shader.use();
 	shader.setInt("heightmap", 0);
+	shader.setInt("normalmap", 1);
 	shader.setMat4("model", glm::mat4(1.0f));
 	shader.setMat4("view_proj", view_proj);
 	shader.setFloat("landmass.scale", debug.land_scale);
 	shader.setVec4("clipping_plane", clipping_plane);
 	shader.setVec3("lightPos", light.lightPosition);
+	shader.setVec4("lightColor", glm::vec4(light.lightColor,1));
 	shader.setVec3("cameraPos", camera.position);
 
 	mesh.draw();
@@ -353,6 +357,7 @@ int main() {
 	ew::Shader sky_shader = ew::Shader("assets/skybox.vert", "assets/skybox.frag");
 	ew::Shader light_shader = ew::Shader("assets/lightSphere.vert", "assets/lightSphere.frag");
 	GLuint 	heightmap = ew::loadTexture("assets/heightmap.png");
+	GLuint 	normalmap = ew::loadTexture("assets/NormalMap.png");
 
 	sky.init();
 
@@ -373,7 +378,7 @@ int main() {
 	lightBuffer.init();
 
 	islandPlane.load(ew::createPlane(50.0f, 50.0f, 100));
-	waterPlane.load(ew::createPlane(50.0f, 50.0f, 100));
+	waterPlane.load(ew::createPlane(50.0f, 50.0f, 1));
 	lightSphere.load(ew::createSphere(1.0f, 12));
 
 
@@ -425,12 +430,11 @@ int main() {
 			}
 			render_light(light_shader, lightSphere, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
-			render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
+			render_terrain(heightmap,normalmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
 			camera.position.y += distY;
 			cameraController.pitch *= -1.0f;
 			recalculateCamera();
 		}
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		// WATER_REFRACTION:
 		glBindFramebuffer(GL_FRAMEBUFFER, waterBuffers[WATER_REFRACTION].fbo);
@@ -439,10 +443,8 @@ int main() {
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glViewport(0, 0, 800, 600);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			// TODO: MAYBE SET A NEW CAMERA ANGLE;
-			render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0, -1.0, 0.0, debug.water_height));
+			render_terrain(heightmap,normalmap, land_shader, islandPlane, glm::vec4(0.0, -1.0, 0.0, debug.water_height));
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -466,7 +468,7 @@ int main() {
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		render_light(light_shader, lightSphere,glm::vec4(0.0f));
-		render_terrain(heightmap, land_shader, islandPlane, glm::vec4(0.0f));
+		render_terrain(heightmap,normalmap, land_shader, islandPlane, glm::vec4(0.0f));
 		render_water(water_shader, waterPlane);
 
 		// always last.
@@ -496,6 +498,9 @@ void drawUI() {
 	ImGui::SliderFloat("Water Length", &debug.wave_length, 0.0f, 500.0f);
 	ImGui::SliderFloat("Refractions", &debug.refreaction_power, 0.0f, 10.0f);
 	ImGui::SliderInt("Tiles", &debug.tiles, 0.0f, 10.0f);
+	ImGui::Text("Light");
+	ImGui::SliderFloat3("LightPosition", &light.lightPosition.x, -20, 20);
+	ImGui::SliderFloat3("LightColor", &light.lightColor.x, 0, 1);
 
 	ImGui::Text("(%.2f, %.2f, %.2f)", camera.position.x, camera.position.y, camera.position.z);
 
@@ -506,9 +511,7 @@ void drawUI() {
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFLECTION].color0, size);
 	ImGui::Text("Skybox (Should show data)");
 	ImGui::Image((ImTextureID)sky.cubemap, size);
-	ImGui::Text("Light");
-	ImGui::SliderFloat3("LightPosition", &light.lightPosition.x, -20, 20);
-	ImGui::SliderFloat3("LightColor", &light.lightColor.x, 0, 1);
+
 	ImGui::End();
 
 

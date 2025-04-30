@@ -82,7 +82,7 @@ int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
 	ew::Shader blinphong = ew::Shader("assets/b_light.vert", "assets/b_light.frag");
 	ew::Shader shadow = ew::Shader("assets/shadow.vert", "assets/shadow.frag");
-	plane.load(ew::createPlane(50.0f, 50.0f, 100));
+	plane.load(ew::createPlane(50.0f, 50.0f, 20));
 	ew::Model monkeyModel = ew::Model("assets/suzanne.fbx");
 
 	monkeyTransform.position = glm::vec3(0.0f, 0.0f, 0.0f);

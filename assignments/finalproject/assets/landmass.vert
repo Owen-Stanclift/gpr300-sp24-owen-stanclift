@@ -7,8 +7,10 @@ layout(location = 2) in vec2 vTexCoord;
 uniform mat4 model;
 uniform mat4 view_proj;
 uniform sampler2D heightmap;
+uniform sampler2D normalmap;
 uniform vec4 clipping_plane;
 uniform vec3 lightPos;
+uniform vec3 cameraPos;
 
 struct LandmassProp
 {
@@ -19,20 +21,15 @@ uniform LandmassProp landmass;
 out Surface
 {
 	vec2 TexCoord;
-	float normalShadow;
 	vec3 lightDirection;
+	vec3 viewDirection;
 	vec3 WorldPosition;
 }vs_out;
 
 //Calculations
 
-float getHeight(int x, int z)
-{
-	float height = texture(heightmap,vec2(x,z)).r;
-	return height;
-}
 vec3 light;
-const float offset = 1.0 / 2048.0;
+const float offset = 1.0 / 2049.0;
 const vec3 offsets[9] = vec3[]( 
 	vec3(-offset,  offset,0), // top-left
 	vec3( 0.0,     offset,0), // top-center
@@ -51,46 +48,25 @@ const float kernel[9] = float[](
 	2.0, 4.0, 2.0,
 	1.0, 2.0, 1.0 
 );
-const float steps = 10;
 
-vec3 calculateNormal(vec2 pos, vec3 off,float height)
-{
-	float hL = height * dot(pos,-off.xz);
-	float hR = height *dot(pos,off.xz);
-	float hD = height *dot(pos,-off.zy);
-	float hU = height * dot(pos,off.zy);
-
-
-	vec3 N = vec3(0);
-	N.x = hL - hR;
-	N.y = hD - hU;
-	N.z = 1.0;
-	N = normalize(N);
-	return N;
-};
 void main()
 {
-	light = lightPos.xyz * vec3(1,1,1);
 	vs_out.TexCoord = vTexCoord;
-	float height = 0.0;
-	vec3 norm = vec3(0);
-	vec3 lightDir = light - vPos;
-	vec3 stepDir = normalize(lightDir);
+	float height = 0;
 	for(int i = 0; i <9;i++)
 	{
 		vec2 hPos = vTexCoord + offsets[i].xy;
-		float local = texture(heightmap,hPos).r;
+		float local = texture(heightmap, hPos).r;
 		height += local * (kernel[i]/ strength);
-		norm = calculateNormal(hPos,offsets[i],local);
 	}
-	
+
 	vec4 WorldPos = model * vec4(vPos, 1.0);
 	WorldPos.y += height * landmass.scale;
-	vs_out.lightDirection = lightDir;
+	vs_out.lightDirection = normalize(vec3(lightPos.x,-lightPos.y,lightPos.z) - WorldPos.xyz);
+	vs_out.viewDirection = normalize(cameraPos - WorldPos.xyz);
 	vs_out.WorldPosition = WorldPos.xyz;
 
 
-	vs_out.normalShadow = (dot(norm, -stepDir) + 1)/2;
 	gl_ClipDistance[0] = dot(WorldPos, clipping_plane);
 	gl_Position = view_proj * WorldPos;
 }
