@@ -213,13 +213,14 @@ struct DepthBuffer {
 
 		glGenTextures(1, &depth);
 		glBindTexture(GL_TEXTURE_2D, depth);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 2048, 2048, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, 2048, 2048, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 		float borderColor[4] = { 1.0f,1.0f,1.0f,1.0f };
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
 
 		glDrawBuffer(GL_NONE);
 		glReadBuffer(GL_NONE);
@@ -293,7 +294,7 @@ void render_light(const ew::Shader& shader, const ew::Mesh& sphere, const glm::v
 void render_terrain(GLuint heightmap, GLuint normalmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
 {
 	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
-	const auto light_proj = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 100.0f);
+	const auto light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
 	const auto light_view = glm::lookAt(light.lightPosition, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	const auto light_view_proj = light_proj * light_view;
 
@@ -429,19 +430,17 @@ int main() {
 		// SHADOW_MAP
 		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer.fbo);
 		{
-			const auto light_proj = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 100.0f);
-			const auto light_view = glm::lookAt(light.lightPosition, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+			const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
+			const auto light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+			const auto light_view = glm::lookAt(light.lightPosition, glm::vec3(0), glm::vec3(0.0f, 1.0f, 0.0f));
 			const auto light_view_proj = light_proj * light_view;
 
 			glEnable(GL_DEPTH_TEST);
 			glViewport(0, 0, 2048, 2048);
 			glClear(GL_DEPTH_BUFFER_BIT);
-			glEnable(GL_CULL_FACE);
 			glCullFace(GL_FRONT);
-
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, heightmap);
-
 			depth_shader.use();
 			depth_shader.setInt("heightmap", 0);
 			depth_shader.setFloat("landmass.scale", debug.land_scale);
@@ -449,7 +448,9 @@ int main() {
 			depth_shader.setMat4("light_view_proj", light_view_proj);
 
 			islandPlane.draw();
+			glEnable(GL_CULL_FACE);
 			glCullFace(GL_BACK);
+			glEnable(GL_DEPTH_TEST);
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -528,7 +529,7 @@ void drawUI() {
 
 	ImVec2 size = { 400.0f, 300.0f };
 	ImGui::Text("Shadow Map (depthbuffer.depth)");
-	ImGui::Image((ImTextureID)depthbuffer.depth, size);
+	ImGui::Image((ImTextureID)depthbuffer.depth, size, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::Text("Refraction (fbo.color0)");
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFRACTION].color0, size, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::Text("Reflection (fbo.color0)");

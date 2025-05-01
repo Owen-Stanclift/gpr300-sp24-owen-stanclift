@@ -19,6 +19,8 @@ struct LandmassProp
 };
 uniform LandmassProp landmass;
 
+float height;
+
 //Calculations:
 const float offset = 1.0 / 2049.0;
 const vec2 offsets[9] = vec2[]( 
@@ -39,7 +41,6 @@ const float kernel[9] = float[](
     2.0, 4.0, 2.0,
     1.0, 2.0, 1.0 
 );
-
 float shadow_calc(vec4 frag_pos_lightspace)
 {
 	vec3 proj_cord = frag_pos_lightspace.xyz / frag_pos_lightspace.w;
@@ -50,12 +51,13 @@ float shadow_calc(vec4 frag_pos_lightspace)
 
 	float shadow = 0.0f;
 	vec2 texSize = 1.0/ textureSize(shadowmap, 0);
+
 	for (int x = -1; x <= 1; x++)
 	{
 		for (int y = -1; y <= 1; y++)
 		{
 		    float pcfDepth = texture(shadowmap, proj_cord.xy + vec2(x, y) * texSize).r;
-		    shadow += (current_depth - 0.05) > pcfDepth ? 1.0 : 0.0;
+		    shadow += (current_depth - (height)) > pcfDepth ? 1.0 : 0.0;
 		}
 	}
 
@@ -96,16 +98,15 @@ vec3 getTerrainColor(float n)
 
 void main()
 {
-	float n = 0.0;
 	for(int i = 0; i <9; i++)
 	{
     	vec2 uv = fs_in.TexCoord + offsets[i];
 		float local = texture(heightmap, uv).r;
-		n += local * (kernel[i] / strength);
+		height += local * (kernel[i] / strength);
 	}
 
     // procedural coloring
-    vec3 color = getTerrainColor(n);
+    vec3 color = getTerrainColor(height);
 
     // shadowing
     float shadow = shadow_calc(fs_in.LightSpacePosition);

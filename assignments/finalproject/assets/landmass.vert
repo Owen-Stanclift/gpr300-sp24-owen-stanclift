@@ -59,9 +59,8 @@ void main()
 	}
 
 	vec4 WorldPos = model * vec4(vPos, 1.0);
+		vs_out.LightSpacePosition = light_view_proj * WorldPos;
 	WorldPos.y += height * landmass.scale;
-
-	vs_out.LightSpacePosition = light_view_proj * WorldPos;
 	vs_out.WorldPosition = WorldPos.xyz;
 
 
