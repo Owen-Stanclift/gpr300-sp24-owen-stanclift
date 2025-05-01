@@ -98,51 +98,50 @@ struct Framebuffer
 	};
 };
 
-float skySize = 1.0f;
 float skyboxVerticies[] =
 {
 	//Cords
-	-skySize,  skySize, -skySize,
-	-skySize, -skySize, -skySize,
-	 skySize, -skySize, -skySize,
-	 skySize, -skySize, -skySize,
-	 skySize,  skySize, -skySize,
-	-skySize,  skySize, -skySize,
+	-1.0f,  1.0f, -1.0f,
+	-1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
+	 1.0f,  1.0f, -1.0f,
+	-1.0f,  1.0f, -1.0f,
 
-	-skySize, -skySize,  skySize,
-	-skySize, -skySize, -skySize,
-	-skySize,  skySize, -skySize,
-	-skySize,  skySize, -skySize,
-	-skySize,  skySize,  skySize,
-	-skySize, -skySize,  skySize,
+	-1.0f, -1.0f,  1.0f,
+	-1.0f, -1.0f, -1.0f,
+	-1.0f,  1.0f, -1.0f,
+	-1.0f,  1.0f, -1.0f,
+	-1.0f,  1.0f,  1.0f,
+	-1.0f, -1.0f,  1.0f,
 
-	 skySize, -skySize, -skySize,
-	 skySize, -skySize,  skySize,
-	 skySize,  skySize,  skySize,
-	 skySize,  skySize,  skySize,
-	 skySize,  skySize, -skySize,
-	 skySize, -skySize, -skySize,
+	 1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
 
-	-skySize, -skySize,  skySize,
-	-skySize,  skySize,  skySize,
-	 skySize,  skySize,  skySize,
-	 skySize,  skySize,  skySize,
-	 skySize, -skySize,  skySize,
-	-skySize, -skySize,  skySize,
+	-1.0f, -1.0f,  1.0f,
+	-1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f, -1.0f,  1.0f,
+	-1.0f, -1.0f,  1.0f,
 
-	-skySize,  skySize, -skySize,
-	 skySize,  skySize, -skySize,
-	 skySize,  skySize,  skySize,
-	 skySize,  skySize,  skySize,
-	-skySize,  skySize,  skySize,
-	-skySize,  skySize, -skySize,
+	-1.0f,  1.0f, -1.0f,
+	 1.0f,  1.0f, -1.0f,
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f,  1.0f,
+	-1.0f,  1.0f,  1.0f,
+	-1.0f,  1.0f, -1.0f,
 
-	-skySize, -skySize, -skySize,
-	-skySize, -skySize,  skySize,
-	 skySize, -skySize, -skySize,
-	 skySize, -skySize, -skySize,
-	-skySize, -skySize,  skySize,
-	 skySize, -skySize,  skySize,
+	-1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f,  1.0f,
+	 1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f,  1.0f,
+	 1.0f, -1.0f,  1.0f,
 
 };
 
@@ -178,8 +177,9 @@ struct SkyBuffer
 	GLuint cubemap;
 	void init()
 	{
-		glGenVertexArrays(2, &skyboxVAO);
-		glGenBuffers(2, &skyboxVBO);
+		glGenVertexArrays(1, &skyboxVAO);
+		glGenBuffers(1, &skyboxVBO);
+
 		glBindVertexArray(skyboxVAO);
 		glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVerticies), &skyboxVerticies, GL_STATIC_DRAW);
@@ -198,9 +198,36 @@ struct SkyBuffer
 		};
 
 		cubemap = ew::cubeMapTexture(faces, GL_CLAMP_TO_EDGE, GL_LINEAR, GL_LINEAR);
-	
 	}
-}sky;
+} sky;
+
+struct DepthBuffer {
+
+	GLuint fbo;
+	GLuint depth;
+
+	void init()
+	{
+		glCreateFramebuffers(1, &fbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+		glGenTextures(1, &depth);
+		glBindTexture(GL_TEXTURE_2D, depth);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 2048, 2048, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		float borderColor[4] = { 1.0f,1.0f,1.0f,1.0f };
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	}
+} depthbuffer;
 
 struct WaterMaterial {
 	unsigned int spec;
@@ -222,13 +249,7 @@ Framebuffer landShadowBuffer;
 struct Light {
 	glm::vec3 lightPosition = glm::vec3(0,15,0);
 	glm::vec3 lightColor = glm::vec3(1);
-}light;
-
-
-
-
-
-
+} light;
 
 //Global state
 int screenWidth = 1080;
@@ -272,11 +293,9 @@ void render_light(const ew::Shader& shader, const ew::Mesh& sphere, const glm::v
 void render_terrain(GLuint heightmap, GLuint normalmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
 {
 	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
-
-	const auto light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+	const auto light_proj = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 100.0f);
 	const auto light_view = glm::lookAt(light.lightPosition, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	const auto light_view_proj = light_proj * light_view;
-
 
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
@@ -284,18 +303,16 @@ void render_terrain(GLuint heightmap, GLuint normalmap, const ew::Shader& shader
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, heightmap);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, normalmap);
+	glBindTexture(GL_TEXTURE_2D, depthbuffer.depth);
 
 	shader.use();
 	shader.setInt("heightmap", 0);
-	shader.setInt("normalmap", 1);
+	shader.setInt("shadowmap", 1);
 	shader.setMat4("model", glm::mat4(1.0f));
 	shader.setMat4("view_proj", view_proj);
+	shader.setMat4("light_view_proj", light_view_proj);
 	shader.setFloat("landmass.scale", debug.land_scale);
 	shader.setVec4("clipping_plane", clipping_plane);
-	shader.setVec3("lightPos", light.lightPosition);
-	shader.setVec4("lightColor", glm::vec4(light.lightColor,1));
-	shader.setVec3("cameraPos", camera.position);
 
 	mesh.draw();
 }
@@ -303,14 +320,27 @@ void render_sky(const ew::Shader& shader)
 {
 	const auto view_proj = camera.projectionMatrix() * glm::mat4(glm::mat3(camera.viewMatrix()));
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, sky.cubemap);
-	glDepthMask(GL_FALSE);
-	shader.use();
-	shader.setMat4("view_proj", view_proj);
-	shader.setInt("skybox", 0);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glBindVertexArray(sky.skyboxVAO);
+	{
+		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+		//glCullFace(GL_FRONT);
+		glDepthFunc(GL_LEQUAL);
+		glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glEnableVertexAttribArray(0);
 
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, sky.cubemap);
+		glDepthMask(GL_FALSE);
+		shader.use();
+		shader.setMat4("view_proj", view_proj);
+		shader.setInt("skybox", 0);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+
+		glDepthFunc(GL_LESS);
+		glDepthMask(GL_TRUE);
+	}
+	glBindVertexArray(0);
 }
 
 // render water:
@@ -356,12 +386,12 @@ int main() {
 	ew::Shader water_shader = ew::Shader("assets/water.vert", "assets/water.frag");
 	ew::Shader sky_shader = ew::Shader("assets/skybox.vert", "assets/skybox.frag");
 	ew::Shader light_shader = ew::Shader("assets/lightSphere.vert", "assets/lightSphere.frag");
+	ew::Shader depth_shader = ew::Shader("assets/depth.vert", "assets/depth.frag");
 	GLuint 	heightmap = ew::loadTexture("assets/heightmap.png");
 	GLuint 	normalmap = ew::loadTexture("assets/NormalMap.png");
 
 	sky.init();
-
-
+	depthbuffer.init();
 
 	water_material.dudv = ew::loadTexture("assets/DuDvMap.png");
 	water_material.normal = ew::loadTexture("assets/water_normal.png");
@@ -381,14 +411,10 @@ int main() {
 	waterPlane.load(ew::createPlane(50.0f, 50.0f, 1));
 	lightSphere.load(ew::createSphere(1.0f, 12));
 
-
 	camera.position = glm::vec3(0.0f, 5.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
 	camera.aspectRatio = (float)screenWidth / screenHeight;
 	camera.fov = 60.0f; 
-
-
-
 
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	while (!glfwWindowShouldClose(window)) {
@@ -399,6 +425,34 @@ int main() {
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
 		cameraController.move(window, &camera, deltaTime);
+
+		// SHADOW_MAP
+		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer.fbo);
+		{
+			const auto light_proj = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 100.0f);
+			const auto light_view = glm::lookAt(light.lightPosition, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+			const auto light_view_proj = light_proj * light_view;
+
+			glEnable(GL_DEPTH_TEST);
+			glViewport(0, 0, 2048, 2048);
+			glClear(GL_DEPTH_BUFFER_BIT);
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_FRONT);
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, heightmap);
+
+			depth_shader.use();
+			depth_shader.setInt("heightmap", 0);
+			depth_shader.setFloat("landmass.scale", debug.land_scale);
+			depth_shader.setMat4("model", glm::mat4(1.0f));
+			depth_shader.setMat4("light_view_proj", light_view_proj);
+
+			islandPlane.draw();
+			glCullFace(GL_BACK);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 		glViewport(0, 0, 800, 600);
 
 		// WATER_REFLECTION:
@@ -411,26 +465,12 @@ int main() {
 			float distY = 2.0f * (camera.position.y - debug.water_height);
 			camera.position.y -= distY;
 			cameraController.pitch *= -1.0f;
-
 			recalculateCamera();
-			// SKY:
-			glBindVertexArray(sky.skyboxVAO);
-			{
-				glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-				//glCullFace(GL_FRONT);
-				glDepthFunc(GL_LEQUAL);
-				glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-				glEnableVertexAttribArray(0);
-				render_sky(sky_shader);
 
-				glDepthFunc(GL_LESS);
-				glDepthMask(GL_TRUE);
-				glBindVertexArray(0);
-			}
+			render_sky(sky_shader);
 			render_light(light_shader, lightSphere, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
-			// TODO: MAYBE SET A NEW CAMERA ANGLE;
 			render_terrain(heightmap,normalmap, land_shader, islandPlane, glm::vec4(0.0, 1.0, 0.0, -debug.water_height));
+
 			camera.position.y += distY;
 			cameraController.pitch *= -1.0f;
 			recalculateCamera();
@@ -443,31 +483,13 @@ int main() {
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glViewport(0, 0, 800, 600);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			// TODO: MAYBE SET A NEW CAMERA ANGLE;
 			render_terrain(heightmap,normalmap, land_shader, islandPlane, glm::vec4(0.0, -1.0, 0.0, debug.water_height));
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, screenWidth, screenHeight);
-		// SKY:
-		glBindVertexArray(sky.skyboxVAO);
-		{
-			glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-			//glCullFace(GL_FRONT);
-			glDepthFunc(GL_LEQUAL);
-			glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			glEnableVertexAttribArray(0);
-			render_sky(sky_shader);
-
-			glDepthFunc(GL_LESS);
-			glDepthMask(GL_TRUE);
-			glBindVertexArray(0);
-		}
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		render_light(light_shader, lightSphere,glm::vec4(0.0f));
+		render_sky(sky_shader);
+		render_light(light_shader, lightSphere, glm::vec4(0.0f));
 		render_terrain(heightmap,normalmap, land_shader, islandPlane, glm::vec4(0.0f));
 		render_water(water_shader, waterPlane);
 
@@ -499,18 +521,19 @@ void drawUI() {
 	ImGui::SliderFloat("Refractions", &debug.refreaction_power, 0.0f, 10.0f);
 	ImGui::SliderInt("Tiles", &debug.tiles, 0.0f, 10.0f);
 	ImGui::Text("Light");
-	ImGui::SliderFloat3("LightPosition", &light.lightPosition.x, -20, 20);
-	ImGui::SliderFloat3("LightColor", &light.lightColor.x, 0, 1);
+	ImGui::SliderFloat3("LightPosition", &light.lightPosition[0], -20, 20);
+	ImGui::ColorEdit3("LightColor", &light.lightColor[0]);
 
 	ImGui::Text("(%.2f, %.2f, %.2f)", camera.position.x, camera.position.y, camera.position.z);
 
 	ImVec2 size = { 400.0f, 300.0f };
+	ImGui::Text("Shadow Map (depthbuffer.depth)");
+	ImGui::Image((ImTextureID)depthbuffer.depth, size);
 	ImGui::Text("Refraction (fbo.color0)");
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFRACTION].color0, size, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::Text("Reflection (fbo.color0)");
 	ImGui::Image((ImTextureID)waterBuffers[WATER_REFLECTION].color0, size);
-	ImGui::Text("Skybox (Should show data)");
-	ImGui::Image((ImTextureID)sky.cubemap, size);
+
 
 	ImGui::End();
 
