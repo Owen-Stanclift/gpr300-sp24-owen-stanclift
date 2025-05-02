@@ -57,7 +57,7 @@ float shadow_calc(vec4 frag_pos_lightspace)
 		for (int y = -1; y <= 1; y++)
 		{
 		    float pcfDepth = texture(shadowmap, proj_cord.xy + vec2(x, y) * texSize).r;
-		    shadow += (current_depth - (height)) > pcfDepth ? 1.0 : 0.0;
+		    shadow += (current_depth - 0.005) > pcfDepth ? 1.0 : 0.0;
 		}
 	}
 

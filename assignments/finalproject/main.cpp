@@ -294,7 +294,7 @@ void render_light(const ew::Shader& shader, const ew::Mesh& sphere, const glm::v
 void render_terrain(GLuint heightmap, GLuint normalmap, const ew::Shader& shader, const ew::Mesh& mesh, const glm::vec4 clipping_plane)
 {
 	const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
-	const auto light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+	const auto light_proj = glm::ortho(-25.0f, 25.0f, -25.0f, 25.0f, 0.1f, 100.0f);
 	const auto light_view = glm::lookAt(light.lightPosition, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	const auto light_view_proj = light_proj * light_view;
 
@@ -431,7 +431,7 @@ int main() {
 		glBindFramebuffer(GL_FRAMEBUFFER, depthbuffer.fbo);
 		{
 			const auto view_proj = camera.projectionMatrix() * camera.viewMatrix();
-			const auto light_proj = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
+			const auto light_proj = glm::ortho(-25.0f, 25.0f, -25.0f, 25.0f, 0.1f, 100.0f);
 			const auto light_view = glm::lookAt(light.lightPosition, glm::vec3(0), glm::vec3(0.0f, 1.0f, 0.0f));
 			const auto light_view_proj = light_proj * light_view;
 
